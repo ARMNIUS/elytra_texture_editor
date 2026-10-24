@@ -748,3 +748,47 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
   .transform-bar .tiny-action { width: 20px; }
   .cursor-readout { display: none; }
 }
+
+/* ===== 0.10: multi-project tabs ===== */
+.document-tabs {
+  flex: 0 0 30px; height: 30px; display: flex; align-items: flex-end; gap: 2px;
+  padding: 2px 5px 0; background: #c0c0c0; border-bottom: 1px solid #808080;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+}
+.document-tabs::-webkit-scrollbar { height: 6px; }
+.document-tab {
+  display: flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  min-width: 108px; max-width: 230px; height: 24px; padding: 0 3px 0 7px;
+  border: 1px solid; border-color: #fff #404040 #c0c0c0 #fff;
+  background: #d4d0c8; color: #111; cursor: pointer;
+  font: 10px Tahoma, sans-serif; user-select: none;
+  box-shadow: inset 1px 1px #f7f5f0;
+}
+.document-tab:hover { background: #e4e0d8; }
+.document-tab-active {
+  height: 27px; background: #fff; font-weight: 700;
+  border-bottom-color: #fff; box-shadow: inset 1px 1px #fff;
+}
+.document-tab-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-tab-dirty { flex: 0 0 6px; width: 6px; height: 6px; background: #d09000; }
+.document-tab-close {
+  display: grid; place-items: center; flex: 0 0 16px; width: 16px; height: 15px; padding: 0;
+  border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer;
+}
+.document-tab-close:hover { border-color: #808080; background: #e8e4dc; }
+.document-tab-new {
+  display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; margin-left: 2px;
+  border: 1px solid; border-color: #fff #404040 #404040 #fff; background: #d4d0c8; color: #111; cursor: pointer;
+  box-shadow: inset 1px 1px #f7f5f0;
+}
+.document-tab-new:hover { background: #e4e0d8; }
+.document-tab-new:active { border-color: #404040 #fff #fff #404040; box-shadow: inset 1px 1px #888; }
+
+/* The filename lives in the tab; keep the top-bar field as a title, not a second tab. */
+.document-title { border: 1px solid transparent; background: transparent; color: #fff; }
+.document-title svg { color: #cfe2ff; }
+.document-title input { color: #fff; }
+.document-title:hover { border-color: #ffffff55; }
+.document-title:focus-within { background: #fff; border: 2px inset #d4d0c8; color: #222; }
+.document-title:focus-within input { color: #111; }
+.document-title:focus-within svg { color: #244f91; }

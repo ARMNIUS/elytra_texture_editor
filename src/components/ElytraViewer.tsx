@@ -243,10 +243,12 @@ export default function ElytraViewer({
       crouch.speed = 1
       crouch.update(viewer.playerObject, 0)
       crouch.paused = true
-      // Shift/crouch in-game does not trigger elytra flight. Keep the ElytraObject's
-      // regular slightly-open resting angle rather than using FlyingAnimation's 90° spread.
+      // Match the wing angles skinview3d's CrouchAnimation reaches in its fully
+      // crouched frame (0.72 rad outward + 0.30 rad spread), which follows the
+      // in-game crouch silhouette much closer than the old 0.40 rad pose.
       viewer.playerObject.elytra.resetJoints()
-      viewer.playerObject.elytra.leftWing.rotation.z = 0.40
+      viewer.playerObject.elytra.leftWing.rotation.z = 0.72
+      viewer.playerObject.elytra.leftWing.rotation.y = 0.30
       viewer.playerObject.elytra.leftWing.rotation.x = 0.2617994
       viewer.playerObject.elytra.updateRightWing()
       viewer.render()

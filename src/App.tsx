@@ -6,7 +6,7 @@ import {
   FileImage, CircleHelp, Maximize2, Layers3, Sparkles, MousePointer2, ZoomIn, ZoomOut, UserRound,
   Paintbrush, ScanLine, PersonStanding, ArrowLeftRight, Save, FileUp,
   SquareDashedMousePointer, Slash, Square, Circle, Copy, Scissors, ClipboardPaste, Trash2, Merge, Plus,
-  FlipHorizontal, FlipVertical, RefreshCw, RotateCcw,
+  FlipHorizontal, FlipVertical, RefreshCw, RotateCcw, X,
 } from 'lucide-react'
 import TextureCanvas from './components/TextureCanvas'
 import ElytraViewer from './components/ElytraViewer'
@@ -23,7 +23,7 @@ import {
 } from './utils/texture'
 import type { PixelRegion } from './utils/texture'
 import {
-  cloneLayer, compositeLayers, createLayer, emptyLayerPixels, layersFromPixels, mergeLayerPixels,
+  cloneLayer, compositeLayers, createLayer, createLayerId, emptyLayerPixels, layersFromPixels, mergeLayerPixels,
   moveLayer as moveLayerInStack, nextLayerName,
 } from './utils/layers'
 import type { Layer } from './utils/layers'
@@ -37,6 +37,49 @@ export type ToolId = 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'li
 type ViewMode = '2d' | 'split' | '3d'
 
 type Snapshot = { layers: Layer[]; activeLayerId: string }
+
+type DocumentState = {
+  id: string
+  filename: string
+  dirty: boolean
+  layers: Layer[]
+  activeLayerId: string
+  history: Snapshot[]
+  future: Snapshot[]
+  selection: SelectionRect | null
+  skinUrl: string | null
+  skinFilename: string
+  zoom: number
+}
+
+function createDocument(filename: string, layers?: Layer[], overrides: Partial<DocumentState> = {}): DocumentState {
+  const initialLayers = layers && layers.length > 0 ? layers : [createLayer('Слой 1')]
+  return {
+    id: createLayerId(),
+    filename,
+    dirty: false,
+    layers: initialLayers,
+    activeLayerId: initialLayers[initialLayers.length - 1].id,
+    history: [],
+    future: [],
+    selection: null,
+    skinUrl: null,
+    skinFilename: '',
+    zoom: 10,
+    ...overrides,
+  }
+}
+
+function nextUntitledName(documents: DocumentState[]): string {
+  const names = new Set(documents.map((document) => document.filename))
+  let index = 1
+  while (names.has(`Без названия ${index}.png`)) index += 1
+  return `Без названия ${index}.png`
+}
+
+function resolveValue<T>(value: T | ((previous: T) => T), previous: T): T {
+  return typeof value === 'function' ? (value as (previous: T) => T)(previous) : value
+}
 
 type FloatingTransform = {
   block: PixelBlock
@@ -136,14 +179,86 @@ function shortcutMatches(event: KeyboardEvent, shortcut: string): boolean {
 
 export default function App() {
   const { openContextMenu } = useContextMenu()
-  const [layers, setLayers] = useState<Layer[]>(() => [createLayer('Слой 1', makeStarterTexture())])
-  const [activeLayerId, setActiveLayerId] = useState(() => layers[0].id)
-  const layersRef = useRef(layers)
-  const activeLayerIdRef = useRef(activeLayerId)
-  const [selection, setSelection] = useState<SelectionRect | null>(null)
+  const [documents, setDocuments] = useState<DocumentState[]>(() => [createDocument('elytra-texture.png', [createLayer('Слой 1', makeStarterTexture())])])
+  const [activeDocumentId, setActiveDocumentId] = useState(() => documents[0].id)
+  const documentsRef = useRef(documents)
+  const activeDocRef = useRef(activeDocumentId)
+  const layersRef = useRef(documents[0].layers)
+  const activeLayerIdRef = useRef(documents[0].activeLayerId)
+  const historyRef = useRef<Snapshot[]>(documents[0].history)
+  const futureRef = useRef<Snapshot[]>(documents[0].future)
   const [clipboard, setClipboard] = useState<PixelRegion | null>(null)
   const [floating, setFloating] = useState<FloatingTransform | null>(null)
   const transformSnapshotRef = useRef<Snapshot | null>(null)
+
+  const activeDocument = documents.find((document) => document.id === activeDocumentId) ?? documents[0]
+  const { layers, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future } = activeDocument
+
+  const writeActiveDocument = useCallback((updater: (document: DocumentState) => DocumentState) => {
+    const current = documentsRef.current
+    const index = current.findIndex((document) => document.id === activeDocRef.current)
+    if (index < 0) return
+    const next = [...current]
+    next[index] = updater(current[index])
+    documentsRef.current = next
+    setDocuments(next)
+  }, [])
+
+  const setLayers = useCallback((value: Layer[] | ((previous: Layer[]) => Layer[])) => {
+    writeActiveDocument((document) => {
+      const nextLayers = resolveValue(value, document.layers)
+      layersRef.current = nextLayers
+      return { ...document, layers: nextLayers }
+    })
+  }, [writeActiveDocument])
+
+  const setActiveLayerId = useCallback((value: string | ((previous: string) => string)) => {
+    writeActiveDocument((document) => {
+      const nextId = resolveValue(value, document.activeLayerId)
+      activeLayerIdRef.current = nextId
+      return { ...document, activeLayerId: nextId }
+    })
+  }, [writeActiveDocument])
+
+  const setHistory = useCallback((value: Snapshot[] | ((previous: Snapshot[]) => Snapshot[])) => {
+    writeActiveDocument((document) => {
+      const nextHistory = resolveValue(value, document.history)
+      historyRef.current = nextHistory
+      return { ...document, history: nextHistory }
+    })
+  }, [writeActiveDocument])
+
+  const setFuture = useCallback((value: Snapshot[] | ((previous: Snapshot[]) => Snapshot[])) => {
+    writeActiveDocument((document) => {
+      const nextFuture = resolveValue(value, document.future)
+      futureRef.current = nextFuture
+      return { ...document, future: nextFuture }
+    })
+  }, [writeActiveDocument])
+
+  const setSelection = useCallback((value: SelectionRect | null) => {
+    writeActiveDocument((document) => ({ ...document, selection: value }))
+  }, [writeActiveDocument])
+
+  const setFilename = useCallback((value: string) => {
+    writeActiveDocument((document) => ({ ...document, filename: value }))
+  }, [writeActiveDocument])
+
+  const setDirty = useCallback((value: boolean) => {
+    writeActiveDocument((document) => ({ ...document, dirty: value }))
+  }, [writeActiveDocument])
+
+  const setSkinUrl = useCallback((value: string | null) => {
+    writeActiveDocument((document) => ({ ...document, skinUrl: value }))
+  }, [writeActiveDocument])
+
+  const setSkinFilename = useCallback((value: string) => {
+    writeActiveDocument((document) => ({ ...document, skinFilename: value }))
+  }, [writeActiveDocument])
+
+  const setZoom = useCallback((value: number | ((previous: number) => number)) => {
+    writeActiveDocument((document) => ({ ...document, zoom: resolveValue(value, document.zoom) }))
+  }, [writeActiveDocument])
   const [currentColor, setCurrentColor] = useState('#4ba3ff')
   const [secondaryColor, setSecondaryColor] = useState('#ffffff')
   const [activeColorSlot, setActiveColorSlot] = useState<'foreground' | 'background'>('foreground')
@@ -159,7 +274,6 @@ export default function App() {
   const [shiftHeld, setShiftHeld] = useState(false)
   const crouching = crouchPinned || shiftHeld
   const [autoRotate, setAutoRotate] = useState(false)
-  const [zoom, setZoom] = useState(10)
   const [cursorPos, setCursorPos] = useState<[number, number]>([0, 0])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [shortcuts, setShortcuts] = useState<ShortcutMap>(() => {
@@ -171,20 +285,12 @@ export default function App() {
       return { ...defaultShortcuts, ...parsed }
     } catch { return defaultShortcuts }
   })
-  const [history, setHistory] = useState<Snapshot[]>([])
-  const [future, setFuture] = useState<Snapshot[]>([])
-  const historyRef = useRef<Snapshot[]>([])
-  const futureRef = useRef<Snapshot[]>([])
   const pendingHistoryRef = useRef<Snapshot | null>(null)
   // A brush stroke is many pointermove commits but a single undo step. The first
   // changed pixel of a stroke pushes the snapshot; the rest only update pixels.
   const strokeActiveRef = useRef(false)
   const strokeSnapshotPushedRef = useRef(false)
   const importModeRef = useRef<'active' | 'new'>('active')
-  const [filename, setFilename] = useState('elytra-texture.png')
-  const [skinUrl, setSkinUrl] = useState<string | null>(null)
-  const [skinFilename, setSkinFilename] = useState('')
-  const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState('Готово к рисованию')
   const [helpOpen, setHelpOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -193,6 +299,8 @@ export default function App() {
 
   useEffect(() => { layersRef.current = layers }, [layers])
   useEffect(() => { activeLayerIdRef.current = activeLayerId }, [activeLayerId])
+  useEffect(() => { documentsRef.current = documents }, [documents])
+  useEffect(() => { activeDocRef.current = activeDocumentId }, [activeDocumentId])
 
   // The canvas, the 3D preview and PNG export all show the flattened stack.
   const pixels = useMemo(() => compositeLayers(layers), [layers])
@@ -214,6 +322,16 @@ export default function App() {
   useEffect(() => {
     document.title = `${dirty ? '• ' : ''}Minecraft Texture Studio — ${filename || 'elytra-texture.png'}`
   }, [dirty, filename])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!documents.some((document) => document.dirty)) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [documents])
 
   const currentSnapshot = useCallback((): Snapshot => ({ layers: layersRef.current, activeLayerId: activeLayerIdRef.current }), [])
 
@@ -517,6 +635,56 @@ export default function App() {
     setSelection(blockSelection(nextBlock, x, y))
   }, [applyLayers, getActivePixels, pushHistory, requireEditableActiveLayer, selection])
 
+  // ----- documents / tabs --------------------------------------------------
+
+  const activateDocument = useCallback((id: string) => {
+    const target = documentsRef.current.find((document) => document.id === id)
+    if (!target) return
+    if (floating) cancelSelectionTransform()
+    endStroke()
+    pendingHistoryRef.current = null
+    activeDocRef.current = id
+    setActiveDocumentId(id)
+    layersRef.current = target.layers
+    activeLayerIdRef.current = target.activeLayerId
+    historyRef.current = target.history
+    futureRef.current = target.future
+    setFloating(null)
+    setStatus(`Проект: ${target.filename}`)
+  }, [cancelSelectionTransform, endStroke, floating])
+
+  const newProject = useCallback(() => {
+    const doc = createDocument(nextUntitledName(documentsRef.current))
+    const next = [...documentsRef.current, doc]
+    documentsRef.current = next
+    setDocuments(next)
+    activateDocument(doc.id)
+  }, [activateDocument])
+
+  const closeDocument = useCallback((id: string) => {
+    const current = documentsRef.current
+    const index = current.findIndex((document) => document.id === id)
+    if (index < 0) return
+    const doc = current[index]
+    if (doc.dirty && !window.confirm(`Закрыть проект «${doc.filename}» без сохранения?`)) return
+    let next = current.filter((document) => document.id !== id)
+    if (!next.length) next = [createDocument('Без названия 1.png')]
+    documentsRef.current = next
+    setDocuments(next)
+    if (activeDocRef.current === id) activateDocument(next[Math.min(index, next.length - 1)].id)
+    else setStatus(`Проект закрыт: ${doc.filename}`)
+  }, [activateDocument])
+
+  const closeActiveProject = useCallback(() => closeDocument(activeDocRef.current), [closeDocument])
+
+  const cycleDocument = useCallback((direction: 1 | -1) => {
+    const docs = documentsRef.current
+    if (docs.length < 2) return
+    const index = docs.findIndex((document) => document.id === activeDocRef.current)
+    const target = docs[(index + direction + docs.length) % docs.length]
+    activateDocument(target.id)
+  }, [activateDocument])
+
   // ----- layers ------------------------------------------------------------
 
   const selectLayer = useCallback((id: string) => {
@@ -690,20 +858,28 @@ export default function App() {
   }, [selectPaletteColor])
 
   const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string) => {
-    layersRef.current = nextLayers
-    setLayers(nextLayers)
-    const activeId = nextLayers.some((layer) => layer.id === requestedActiveId) ? requestedActiveId : nextLayers[nextLayers.length - 1].id
-    activeLayerIdRef.current = activeId
-    setActiveLayerId(activeId)
-    historyRef.current = []
-    futureRef.current = []
-    setHistory([])
-    setFuture([])
-    setSelection(null)
-    setClipboard(null)
-    setFilename(typeof project.filename === 'string' ? project.filename : 'elytra-texture.png')
-
+    if (floating) cancelSelectionTransform()
     const settings = project.settings as Partial<ProjectSettings>
+    const activeId = nextLayers.some((layer) => layer.id === requestedActiveId) ? requestedActiveId : nextLayers[nextLayers.length - 1].id
+    const loadedFilename = typeof project.filename === 'string'
+      ? project.filename
+      : fileName.replace(/\.(mts|json)$/i, '.png')
+    const doc = createDocument(loadedFilename, nextLayers, {
+      activeLayerId: activeId,
+      skinUrl: typeof settings.skinUrl === 'string' ? settings.skinUrl : null,
+      skinFilename: typeof settings.skinFilename === 'string' ? settings.skinFilename : '',
+      zoom: typeof settings.zoom === 'number' && Number.isFinite(settings.zoom)
+        ? Math.min(2048, Math.max(2, Math.round(settings.zoom)))
+        : 10,
+    })
+    const currentDocs = documentsRef.current
+    // A single untouched "new document" tab is replaced instead of leaving an empty tab behind.
+    const canReplace = currentDocs.length === 1 && !currentDocs[0].dirty && currentDocs[0].history.length === 0 && currentDocs[0].layers.length === 1
+    const nextDocs = canReplace ? [doc] : [...currentDocs, doc]
+    documentsRef.current = nextDocs
+    setDocuments(nextDocs)
+    activateDocument(doc.id)
+
     if (typeof settings.currentColor === 'string') setCurrentColor(settings.currentColor)
     if (typeof settings.secondaryColor === 'string') setSecondaryColor(settings.secondaryColor)
     if (settings.activeColorSlot === 'foreground' || settings.activeColorSlot === 'background') setActiveColorSlot(settings.activeColorSlot)
@@ -717,9 +893,6 @@ export default function App() {
     if (typeof settings.paintOn3d === 'boolean') setPaintOn3d(settings.paintOn3d)
     if (typeof settings.crouchPinned === 'boolean') setCrouchPinned(settings.crouchPinned)
     if (typeof settings.autoRotate === 'boolean') setAutoRotate(settings.autoRotate)
-    if (typeof settings.zoom === 'number' && Number.isFinite(settings.zoom)) setZoom(Math.min(2048, Math.max(2, Math.round(settings.zoom))))
-    setSkinUrl(typeof settings.skinUrl === 'string' ? settings.skinUrl : null)
-    if (typeof settings.skinFilename === 'string') setSkinFilename(settings.skinFilename)
 
     if (project.shortcuts && typeof project.shortcuts === 'object') {
       const nextShortcuts = { ...defaultShortcuts, ...project.shortcuts as Partial<ShortcutMap> }
@@ -734,7 +907,6 @@ export default function App() {
       window.dispatchEvent(new CustomEvent('mts:load-project-palette', { detail: project.palettes }))
     }
     setStatus(`Проект загружен: ${fileName}`)
-    setDirty(false)
   }
 
   const handleOpenProjectFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -783,6 +955,11 @@ export default function App() {
       if (typing || showShortcuts) return
       // While a classic context menu is open it owns the keyboard: arrows navigate, Escape closes.
       if (document.querySelector('.classic-context-menu')) return
+      if (event.ctrlKey && !event.altKey && event.key === 'Tab') {
+        event.preventDefault()
+        cycleDocument(event.shiftKey ? -1 : 1)
+        return
+      }
       if (event.key === 'Escape' && floating) {
         event.preventDefault()
         cancelSelectionTransform()
@@ -801,6 +978,8 @@ export default function App() {
         case 'open': openFile(); break
         case 'openProject': openProject(); break
         case 'saveProject': saveProject(); break
+        case 'newProject': newProject(); break
+        case 'closeProject': closeActiveProject(); break
         case 'export': exportPng(); break
         case 'swapColors': swapColors(); break
         case 'copy': copySelection(); break
@@ -831,7 +1010,7 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, exportPng, swapColors, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform])
+  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, exportPng, swapColors, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
 
   const handleImportSkin = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -855,6 +1034,7 @@ export default function App() {
       })
       setSkinUrl(dataUrl)
       setSkinFilename(file.name)
+      setDirty(true)
       setStatus(`Скин модели загружен: ${file.name}`)
     } catch (error) {
       console.error(error)
@@ -933,8 +1113,10 @@ export default function App() {
   ]
 
   const fileMenu: ContextMenuItem[] = [
+    { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <Plus size={14} />, action: newProject },
     { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <FileUp size={14} />, action: openProject },
-    { label: 'Сохранить проект…', shortcut: shortcuts.saveProject, icon: <Save size={14} />, action: saveProject },
+    { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <Save size={14} />, action: saveProject },
+    { label: 'Закрыть проект', shortcut: shortcuts.closeProject, icon: <X size={14} />, action: closeActiveProject },
     { separator: true },
     { label: 'Открыть текстуру…', shortcut: shortcuts.open, icon: <FolderOpen size={14} />, action: openFile },
     { label: 'Импортировать как новый слой…', icon: <Layers3 size={14} />, action: openImportAsNewLayer },
@@ -942,7 +1124,7 @@ export default function App() {
     { separator: true },
     { label: 'Экспортировать PNG…', shortcut: shortcuts.export, icon: <Download size={14} />, action: exportPng },
     { separator: true },
-    { label: 'Новая пустая текстура', icon: <Sparkles size={14} />, action: resetTexture },
+    { label: 'Очистить текущую текстуру', icon: <Sparkles size={14} />, action: resetTexture },
   ]
   const editMenu: ContextMenuItem[] = [
     { label: 'Отменить', shortcut: shortcuts.undo, icon: <Undo2 size={14} />, disabled: history.length === 0, action: undo },
@@ -982,7 +1164,7 @@ export default function App() {
   ]
   const settingsMenu: ContextMenuItem[] = [
     { label: 'Настроить горячие клавиши…', icon: <Keyboard size={14} />, action: () => setShowShortcuts(true) },
-    { label: 'Сбросить скин модели', icon: <RotateCw size={14} />, disabled: !skinUrl, action: () => { setSkinUrl(null); setSkinFilename(''); setStatus('Возвращён стандартный скин модели') } },
+    { label: 'Сбросить скин модели', icon: <RotateCw size={14} />, disabled: !skinUrl, action: () => { setSkinUrl(null); setSkinFilename(''); setDirty(true); setStatus('Возвращён стандартный скин модели') } },
   ]
   const appContextMenu = (event: ReactMouseEvent<HTMLElement>) => {
     // Keep the native text-editing menu for fields so right-click paste/copy still works.
@@ -1012,13 +1194,54 @@ export default function App() {
         </div>
         <div className="document-title">
           <FileImage size={15} />
-          <input aria-label="Имя файла" value={filename} onChange={(event) => setFilename(event.target.value)} />
+          <input aria-label="Имя файла" value={filename} onChange={(event) => { setFilename(event.target.value); setDirty(true) }} />
           {dirty && <span className="dirty-dot" title="Есть несохранённые изменения" />}
         </div>
         <input ref={fileInputRef} type="file" accept="image/png,image/*" onChange={handleImport} hidden />
         <input ref={projectInputRef} type="file" accept=".mts,.json,application/json" onChange={handleOpenProjectFile} hidden />
         <input ref={skinInputRef} type="file" accept="image/png" onChange={handleImportSkin} hidden />
       </header>
+
+      <div className="document-tabs" role="tablist" aria-label="Открытые проекты">
+        {documents.map((document) => {
+          const isActive = document.id === activeDocumentId
+          return (
+            <div
+              key={document.id}
+              role="tab"
+              aria-selected={isActive}
+              tabIndex={0}
+              className={`document-tab ${isActive ? 'document-tab-active' : ''}`}
+              title={`${document.filename}${document.dirty ? ' — не сохранён' : ''}`}
+              onClick={() => activateDocument(document.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  activateDocument(document.id)
+                }
+              }}
+              onAuxClick={(event) => {
+                if (event.button === 1) {
+                  event.preventDefault()
+                  closeDocument(document.id)
+                }
+              }}
+            >
+              <FileImage size={12} />
+              <span className="document-tab-name">{document.filename || 'Без названия'}</span>
+              {document.dirty && <span className="document-tab-dirty" title="Не сохранён" />}
+              <button
+                type="button"
+                className="document-tab-close"
+                title="Закрыть проект"
+                aria-label={`Закрыть ${document.filename}`}
+                onClick={(event) => { event.stopPropagation(); closeDocument(document.id) }}
+              ><X size={11} /></button>
+            </div>
+          )
+        })}
+        <button type="button" className="document-tab-new" onClick={newProject} title={`Новый проект (${shortcuts.newProject})`} aria-label="Новый проект"><Plus size={13} /></button>
+      </div>
 
       <nav className="classic-menu-bar" aria-label="Главное меню">
         <button onClick={(event) => openContextMenu(event, fileMenu)}>Файл</button>

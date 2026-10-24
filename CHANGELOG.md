@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0 — Multiple projects in tabs, wider crouch wings
+
+### Projects and tabs
+- The editor now holds several documents at once. Every tab has its own layers, active layer, undo/redo history, selection, zoom, model skin and unsaved-changes flag; the clipboard is shared between projects.
+- Added a Win9x-style document tab bar under the title bar: click to switch, middle-click or the × button to close, `+` to create a project, dirty dot per tab.
+- File menu gained **Новый проект** (`Ctrl+N`) and **Закрыть проект** (`Ctrl+W`); `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle tabs. All are remappable in Settings → Hotkeys.
+- “Открыть проект” opens the file in a new tab, except when the only tab is an untouched new document — then it is replaced. Closing a dirty tab asks for confirmation.
+- Closing the window/browser tab warns when any project has unsaved changes.
+- The filename field and tab titles update per document; saving writes the active project only.
+
+### 3D preview
+- The crouch pose now opens the elytra wings noticeably wider. Wing angles match the fully crouched frame of skinview3d's `CrouchAnimation` (0.72 rad outward, 0.30 rad spread), which follows the in-game crouch silhouette instead of the previous 0.40 rad guess.
+
+### Tests
+- Tests grew from 98 to 104: creating/switching tabs, per-tab pixels and history, dirty-close confirmation, opening a project as a new tab vs replacing a pristine tab, `Ctrl+N`/`Ctrl+Tab`.
+
 ## 0.9.1 — Color window fixes
 
 - Turning the alpha slider to 0 no longer destroys the color: RGB is preserved in the color string (`#rrggbb00`) and the H/S/V/R/G/B sliders keep their values, so raising alpha restores the original color. Added `formatRgbaExact` for the picker while the compositing formatter keeps emitting `#00000000` for fully transparent pixels.

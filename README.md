@@ -1,10 +1,11 @@
-# Minecraft Texture Studio — 0.9.1
+# Minecraft Texture Studio — 0.10.0
 
 A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 2D pixel canvas, layers, selection, shape tools, UV guides and a live 3D preview. The interface uses a Windows 95/98 / early Windows XP visual style, with bevelled controls, blue title strips and custom context menus.
 
-## Features in 0.9.1
+## Features in 0.10.0
 
 - 64×32 transparent RGBA texture canvas with brush, eraser, flood fill, eyedropper, zoom and a precise pointer dot plus target-pixel preview.
+- **Multiple projects in tabs**: each tab keeps its own layers, history, selection, zoom and model skin; the clipboard is shared. New (`Ctrl+N`), open, save and close (`Ctrl+W`) work per tab, and `Ctrl+Tab` cycles them.
 - A whole brush or eraser drag undoes in one step, in 2D and in 3D painting.
 - Rectangular selection that clips every drawing operation, plus copy/cut/paste, copy merged, paste into a new layer, clear selection, select all and deselect.
 - Selection transform: drag inside the selection to move its pixels, drag the eight handles to stretch them, and use the header buttons for 90°/180° rotation and horizontal/vertical flips. Every transform is one undo step and Escape cancels it.
@@ -66,18 +67,18 @@ The installer is created under `src-tauri\target\release\bundle\nsis\`. Icons li
 A verified local build (Rust 1.99.1, VS Build Tools 2022, Tauri 2.12.5) produced:
 
 ```
-src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.9.1_x64-setup.exe
+src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.10.0_x64-setup.exe
 ```
 
-The installer is **not code-signed**, so Windows SmartScreen may show a warning on other machines. The raw portable binary is `src-tauri\target\release\minecraft-texture-studio.exe`. GUI launch cannot be smoke-tested from the automated workspace (its sandbox cannot create windows); launch the installer or portable `.exe` normally on the desktop to verify.
+The installer is **not code-signed**, so Windows SmartScreen shows a warning: choose «Подробнее» → «Выполнить в любом случае». The raw portable binary is `src-tauri\target\release\minecraft-texture-studio.exe`. The UI is also verified with headless Chromium (tabs, palette, 2D canvas and WebGL preview).
 
 ### Build the .exe on GitHub (no local Rust/MSVC needed)
 
 The repository ships `.github/workflows/build-windows.yml`. It runs the checks, builds the NSIS installer on a `windows-latest` runner and uploads it as an artifact. Pushing a `v*` tag also attaches the `.exe` to a draft GitHub release:
 
 ```powershell
-git tag v0.9.1
-git push origin v0.9.1
+git tag v0.10.0
+git push origin v0.10.0
 ```
 
 See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release checklist.
@@ -94,6 +95,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release c
 | Clear selection / select all / deselect | `Delete` / `Ctrl+A` / `Ctrl+D` |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` |
 | Import PNG / open project / save project / export PNG | `Ctrl+O` / `Ctrl+Shift+O` / `Ctrl+S` / `Ctrl+Shift+E` |
+| New project / close project / cycle tabs | `Ctrl+N` / `Ctrl+W` / `Ctrl+Tab` |
 | Swap FG/BG | `X` |
 | Previous / next palette color | `[` / `]` |
 | UV guide / 2D grid / cycle view | `U` / `H` / `V` |
@@ -118,7 +120,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release c
 
 ## Verification
 
-`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 98 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization, color conversion, project-layer validation, project save/load with version 1 migration, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools); it has not been built in this workspace.
+`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 104 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, dirty-close confirmation, open-as-tab), 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
 
 Known limitations:
 

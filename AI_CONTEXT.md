@@ -1,29 +1,29 @@
-# AI coding brief — Minecraft Texture Studio 0.9.1
+# AI coding brief — Minecraft Texture Studio 0.10.0
 
 Project: React + TypeScript + Vite app with a Tauri 2 wrapper. Continue in the existing repository; never regenerate the app from scratch.
 
 ## Product goal
 A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2D tools and palette management, UV atlas guides, and an editable 3D model preview.
 
-## Current state (0.9.1)
-- `src/App.tsx`: documents the layer stack (`Layer[]`, bottom-to-top), active layer, undo/redo snapshots, selection + floating transform, internal clipboard, hotkeys, view modes and menus. All pixel edits write to the active layer; children receive `displayPixels` (the composite plus a live floating transform preview). A brush/eraser stroke is one undo step (`beginStroke`/`endStroke`); move/resize lifts the selected pixels, previews them and commits one history step; rotation/flip buttons bake the transform immediately. Toolbar/breadcrumb/top-right actions were removed intentionally — saving is `Ctrl+S`/File menu.
+## Current state (0.10.0)
+- `src/App.tsx`: workspace with multiple documents (`DocumentState[]` + active id). Each document owns layers, active layer, undo/redo, selection, zoom, model skin and dirty flag; the clipboard is global. Tab bar creates/switches/closes projects (`Ctrl+N`/`Ctrl+W`/`Ctrl+Tab`), opening a project adds a tab unless the only tab is pristine, dirty tabs confirm on close, and `beforeunload` warns about unsaved projects. All pixel edits write to the active layer; children receive `displayPixels` (composite + floating transform preview). A brush/eraser stroke is one undo step; selection move/resize commits one step; rotation/flip bakes immediately. Saving (`Ctrl+S`) writes only the active document.
 - `src/utils/layers.ts`: layer model, ID generation, flattening (`compositeLayers`), merge, reorder and naming helpers.
 - `src/utils/transform.ts`: pixel-block extraction, nearest-neighbour scaling, 90°/180° rotation, flips, source-over blitting and clamped selection bounds.
 - `src/utils/shapes.ts`: Bresenham lines, rectangle/ellipse outlines, selection normalization/clamping and hit tests.
 - `src/utils/texture.ts`: raster helpers — selection-clipped `paintPoints`, bounded `floodFill`, region `copyRegion`/`pasteRegion`/`clearRegion`, PNG export/import.
 - `src/utils/project.ts`: version 2 `.mts` layer validation/migration helpers.
 - `src/utils/uvGrid.ts`: UV-boundary line geometry for the 3D pixel grid (double-sided, depth-tested).
-- `src/utils/color.ts`: hex/RGB/HSV conversions, RGBA parsing/formatting, `normalizeRgbaColor` (8-digit HEX), `opaqueColor`, `withAlpha` and source-over compositing.
+- `src/utils/color.ts`: hex/RGB/HSV conversions, RGBA parsing/formatting (`formatRgbaExact` preserves RGB at alpha 0), `normalizeRgbaColor` (8-digit HEX), `opaqueColor`, `withAlpha` and source-over compositing.
 - `src/components/ColorEditorWindow.tsx`: draggable floating Win9x window with HSV + RGB + alpha sliders, numeric fields, HEX/HEXA input, A/B swatches (A restores the color from opening time) and click-to-restore.
 - `src/components/TextureCanvas.tsx`: 64×32 canvas with brush/eraser/fill/eyedropper/select/line/rect/ellipse tools, a pointer dot plus target-cell preview for every tool, animated two-tone selection marquee with 8 transform handles, pixel-exact shape preview, native non-passive wheel zoom, UV guides and context menu. Right-press menu opening is deferred to pointerup for painting tools because Chromium dispatches `contextmenu` on press.
 - `src/components/LayersPanel.tsx`: layer list (top-first), visibility, inline rename, add/duplicate/merge/reorder/delete, opacity slider and per-layer context menu.
-- `src/components/ElytraViewer.tsx`: `skinview3d` preview and raycast UV painting; the 3D pixel grid is generated as line geometry on both sides of the wing surface and is assigned to `gridLinesRef` (the 0.6.x bug was a missing assignment). 3D strokes also report `onStrokeStart`/`onStrokeEnd` so they undo as one step. Shape/selection tools leave camera orbiting untouched.
+- `src/components/ElytraViewer.tsx`: `skinview3d` preview and raycast UV painting; the 3D pixel grid is generated as line geometry on both sides of the wing surface and is assigned to `gridLinesRef` (the 0.6.x bug was a missing assignment). Crouch pose uses the library's fully crouched wing angles (z=0.72, y=0.30, x=0.2618). 3D strokes also report `onStrokeStart`/`onStrokeEnd` so they undo as one step. Shape/selection tools leave camera orbiting untouched.
 - `src/components/PalettePanel.tsx`: the only palette surface — swatches, HSV wheel, value slider, HEX/HEXA, FG/BG, color add/delete, palette management and the entry point to the color editor window. The old configurator modal was removed deliberately.
 - `src/components/ContextMenu.tsx`: single menu provider with viewport clamping, focus restore, Escape/resize/scroll handling and arrow-key navigation.
-- `src/components/ShortcutsModal.tsx`: remappable bindings with duplicate/reserved-key detection; `[`, `]`, `Shift` are reserved. Includes copy-merged (`Ctrl+Shift+C`) and paste-into-new-layer (`Ctrl+Shift+V`).
-- `src/styles.css`: single design stylesheet in the Win9x/early XP language. Keep it free of selectors no component renders.
-- `src/**/*.test.{ts,tsx}`: 98 Vitest checks, including server-rendered App smoke tests, jsdom interaction tests for layer management, selection/transform, color editing, pointer cursor, stroke-level undo, clipboard layer operations and project save/load/migration coverage.
-- `.github/workflows/build-windows.yml` + `docs/RELEASING.md`: Windows NSIS installer build on GitHub Actions and the publishing/release checklist. The color picker uses `formatRgbaExact` so alpha 0 keeps RGB.
+- `src/components/ShortcutsModal.tsx`: remappable bindings with duplicate/reserved-key detection; `[`, `]`, `Shift` are reserved. Includes copy-merged, paste-into-new-layer, new/close project and tab cycling.
+- `src/styles.css`: single design stylesheet in the Win9x/early XP language, including the document tab bar. Keep it free of selectors no component renders.
+- `src/**/*.test.{ts,tsx}`: 104 Vitest checks, including server-rendered App smoke tests, jsdom interaction tests for layer management, selection/transform, color editing, pointer cursor, stroke-level undo, clipboard layer operations, multi-project tabs and project save/load/migration coverage.
+- `.github/workflows/build-windows.yml` + `docs/RELEASING.md`: Windows NSIS installer build on GitHub Actions and the publishing/release checklist.
 - `src-tauri/`: Tauri 2 shell with icons, explicit `main` window label and `capabilities/default.json`.
 
 ## Requirements
@@ -38,7 +38,7 @@ A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2
 9. `.mts` format version 2 must keep loading version 1 documents; do not raise the version without a migration path.
 
 ## Verification note
-`npm run typecheck`, `npm test` (98 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. The Windows NSIS installer was built successfully with Rust 1.99.1 + VS Build Tools 2022 + Tauri 2.12.5 at `src-tauri/target/release/bundle/nsis/Minecraft Texture Studio_0.9.1_x64-setup.exe` (unsigned). GUI launch cannot be tested from the agent shell (the sandbox cannot create windows); verify it manually on the desktop. `src-tauri/Cargo.lock` is committed; keep it updated when dependencies change.
+`npm run typecheck`, `npm test` (104 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. The Windows NSIS installer is built with Rust 1.99.1 + VS Build Tools 2022 + Tauri 2.12.5 at `src-tauri/target/release/bundle/nsis/Minecraft Texture Studio_0.10.0_x64-setup.exe` (unsigned; rebuild after changes). GUI launch cannot be tested from the agent shell (the sandbox cannot create windows); verify it manually on the desktop. `src-tauri/Cargo.lock` is committed; keep it updated when dependencies change.
 
 ## Next increments
 - Non-rectangular selection and floating selection move/transform.

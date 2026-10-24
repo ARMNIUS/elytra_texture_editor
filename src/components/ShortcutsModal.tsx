@@ -4,7 +4,7 @@ import { X, Keyboard } from 'lucide-react'
 export type ShortcutId =
   | 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'
   | 'undo' | 'redo' | 'swapColors' | 'copy' | 'copyMerged' | 'cut' | 'paste' | 'pasteNewLayer' | 'deleteSelection' | 'selectAll' | 'deselect'
-  | 'open' | 'openProject' | 'saveProject' | 'export'
+  | 'open' | 'openProject' | 'saveProject' | 'export' | 'newProject' | 'closeProject'
   | 'toggleUv' | 'toggleGrid' | 'toggleView'
 export type ShortcutMap = Record<ShortcutId, string>
 
@@ -32,6 +32,8 @@ export const defaultShortcuts: ShortcutMap = {
   openProject: 'Ctrl+Shift+O',
   saveProject: 'Ctrl+S',
   export: 'Ctrl+Shift+E',
+  newProject: 'Ctrl+N',
+  closeProject: 'Ctrl+W',
   toggleUv: 'U',
   toggleGrid: 'H',
   toggleView: 'V',
@@ -58,8 +60,10 @@ const shortcutLabels: Array<{ id: ShortcutId; label: string; group: string }> = 
   { id: 'selectAll', label: 'Выделить весь холст', group: 'ВЫДЕЛЕНИЕ' },
   { id: 'deselect', label: 'Снять выделение', group: 'ВЫДЕЛЕНИЕ' },
   { id: 'open', label: 'Открыть PNG / текстуру', group: 'ФАЙЛ' },
+  { id: 'newProject', label: 'Новый проект', group: 'ФАЙЛ' },
   { id: 'openProject', label: 'Открыть проект .mts', group: 'ФАЙЛ' },
   { id: 'saveProject', label: 'Сохранить проект .mts', group: 'ФАЙЛ' },
+  { id: 'closeProject', label: 'Закрыть проект', group: 'ФАЙЛ' },
   { id: 'export', label: 'Экспорт PNG', group: 'ФАЙЛ' },
   { id: 'toggleUv', label: 'Показать / скрыть UV', group: 'ВИД' },
   { id: 'toggleGrid', label: 'Показать / скрыть сетку', group: 'ВИД' },
