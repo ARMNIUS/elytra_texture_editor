@@ -538,15 +538,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 
 /* Reliable square checkerboard: a tiny SVG pattern avoids the diagonal seams produced by gradients. */
 .pixel-canvas-wrap {
-  background-color: #eeeeee !important;
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYmNiY2JjIi8+PC9zdmc+") !important;
+  background-color: #8f8f8f !important;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+") !important;
   background-repeat: repeat !important;
   background-position: 0 0 !important;
   image-rendering: pixelated;
 }
 .pixel-cursor-transparent {
-  background-color: #eeeeee !important;
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYmNiY2JjIi8+PC9zdmc+") !important;
+  background-color: #8f8f8f !important;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+") !important;
   background-size: 16px 16px !important;
   background-position: 0 0 !important;
 }
@@ -686,7 +686,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 }
 .color-ab-checker {
   position: absolute; inset: 0; background-color: #eee;
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiNlZWVlZWUiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYmNiY2JjIi8+PC9zdmc+");
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+");
   background-size: 8px 8px;
 }
 .color-ab-fill { position: absolute; inset: 0; }
@@ -792,3 +792,42 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 .document-title:focus-within { background: #fff; border: 2px inset #d4d0c8; color: #222; }
 .document-title:focus-within input { color: #111; }
 .document-title:focus-within svg { color: #244f91; }
+
+/* ===== 0.10.1: XP icon set and in-app confirmations ===== */
+.xp-icon { display: inline-block; flex: 0 0 auto; object-fit: contain; vertical-align: middle; }
+.brand-mark { width: 28px; height: 28px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.brand-mark .xp-icon { width: 26px; height: 26px; filter: drop-shadow(0 1px 0 #00113388); }
+.toolbar-action .xp-icon { width: 16px; height: 16px; }
+
+.confirm-backdrop {
+  position: fixed; inset: 0; z-index: 30000; display: grid; place-items: center;
+  padding: 20px; background: #00000055;
+}
+.confirm-dialog {
+  width: min(430px, calc(100vw - 32px)); color: #111; background: #d4d0c8;
+  border: 2px solid; border-color: #fff #404040 #404040 #fff;
+  box-shadow: 3px 3px 0 #0008; font: 11px Tahoma, sans-serif;
+}
+.confirm-titlebar {
+  height: 22px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3px 0 6px; color: #fff; font-weight: 700;
+  background: linear-gradient(90deg, #0a246a 0%, #3a6ea5 100%);
+  box-shadow: inset 0 1px #8ba9db;
+}
+.confirm-close {
+  display: grid; place-items: center; width: 18px; height: 17px; padding: 0;
+  color: #111; background: #d4d0c8; border: 1px solid;
+  border-color: #fff #404040 #404040 #fff; cursor: pointer;
+}
+.confirm-close:active { border-color: #404040 #fff #fff #404040; }
+.confirm-body { display: flex; align-items: flex-start; gap: 13px; padding: 18px 16px 14px; }
+.confirm-body p { margin: 2px 0 0; line-height: 1.45; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 7px; padding: 0 14px 13px; }
+.confirm-actions button {
+  min-width: 82px; height: 24px; padding: 0 10px; color: #111; background: #d4d0c8;
+  border: 1px solid; border-color: #fff #404040 #404040 #fff; font: 11px Tahoma, sans-serif; cursor: pointer;
+  box-shadow: inset 1px 1px #f7f5f0, inset -1px -1px #a0a0a0;
+}
+.confirm-actions button:active { border-color: #404040 #fff #fff #404040; box-shadow: inset 1px 1px #808080; }
+.confirm-actions .confirm-primary { outline: 1px solid #111; outline-offset: -3px; }
+.confirm-actions .confirm-danger { outline-color: #8b0000; }

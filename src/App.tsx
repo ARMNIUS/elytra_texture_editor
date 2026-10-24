@@ -1,22 +1,25 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, MouseEvent as ReactMouseEvent } from 'react'
 import {
-  Brush, Eraser, PaintBucket, Pipette, Undo2, Redo2, FolderOpen, Download,
+  Brush, Eraser, PaintBucket, Pipette,
   Eye, Grid2X2, Keyboard, RotateCw, PanelsTopLeft, Box, ChevronDown, ChevronUp,
   FileImage, CircleHelp, Maximize2, Layers3, Sparkles, MousePointer2, ZoomIn, ZoomOut, UserRound,
-  Paintbrush, ScanLine, PersonStanding, ArrowLeftRight, Save, FileUp,
-  SquareDashedMousePointer, Slash, Square, Circle, Copy, Scissors, ClipboardPaste, Trash2, Merge, Plus,
+  Paintbrush, ScanLine, PersonStanding, ArrowLeftRight,
+  SquareDashedMousePointer, Slash, Square, Circle, Merge, Plus,
   FlipHorizontal, FlipVertical, RefreshCw, RotateCcw, X,
 } from 'lucide-react'
 import TextureCanvas from './components/TextureCanvas'
 import ElytraViewer from './components/ElytraViewer'
 import PalettePanel from './components/PalettePanel'
 import LayersPanel from './components/LayersPanel'
-import ShortcutsModal, { defaultShortcuts } from './components/ShortcutsModal'
+import ShortcutsModal, { defaultShortcuts, normalizeShortcuts } from './components/ShortcutsModal'
+import ConfirmDialog from './components/ConfirmDialog'
+import XpIcon from './components/XpIcon'
 import { useContextMenu } from './components/ContextMenu'
 import type { ContextMenuItem } from './components/ContextMenu'
 import type { ShortcutId, ShortcutMap } from './components/ShortcutsModal'
-import { makeStarterTexture, transparentPixel } from './data/palettes'
+import { transparentPixel } from './data/palettes'
+import { defaultElytraPixels } from './data/defaultElytra'
 import {
   clearRegion, copyRegion, exportPixelsAsPng, floodFill, paintPoints, pasteRegion, readImageFile,
   TEXTURE_HEIGHT, TEXTURE_WIDTH,
@@ -179,8 +182,9 @@ function shortcutMatches(event: KeyboardEvent, shortcut: string): boolean {
 
 export default function App() {
   const { openContextMenu } = useContextMenu()
-  const [documents, setDocuments] = useState<DocumentState[]>(() => [createDocument('elytra-texture.png', [createLayer('Слой 1', makeStarterTexture())])])
+  const [documents, setDocuments] = useState<DocumentState[]>(() => [createDocument('elytra.png', [createLayer('Слой 1', [...defaultElytraPixels])])])
   const [activeDocumentId, setActiveDocumentId] = useState(() => documents[0].id)
+  const [pendingClose, setPendingClose] = useState<{ id: string; filename: string } | null>(null)
   const documentsRef = useRef(documents)
   const activeDocRef = useRef(activeDocumentId)
   const layersRef = useRef(documents[0].layers)
@@ -282,7 +286,7 @@ export default function App() {
       if (!saved) return defaultShortcuts
       const parsed = JSON.parse(saved) as Partial<ShortcutMap>
       if (parsed.export === 'Ctrl+S') parsed.export = 'Ctrl+Shift+E'
-      return { ...defaultShortcuts, ...parsed }
+      return normalizeShortcuts(parsed)
     } catch { return defaultShortcuts }
   })
   const pendingHistoryRef = useRef<Snapshot | null>(null)
@@ -320,7 +324,7 @@ export default function App() {
     : selection
 
   useEffect(() => {
-    document.title = `${dirty ? '• ' : ''}Minecraft Texture Studio — ${filename || 'elytra-texture.png'}`
+    document.title = `${dirty ? '• ' : ''}Minecraft Texture Studio — ${filename || 'elytra.png'}`
   }, [dirty, filename])
 
   useEffect(() => {
@@ -661,12 +665,11 @@ export default function App() {
     activateDocument(doc.id)
   }, [activateDocument])
 
-  const closeDocument = useCallback((id: string) => {
+  const performCloseDocument = useCallback((id: string) => {
     const current = documentsRef.current
     const index = current.findIndex((document) => document.id === id)
     if (index < 0) return
     const doc = current[index]
-    if (doc.dirty && !window.confirm(`Закрыть проект «${doc.filename}» без сохранения?`)) return
     let next = current.filter((document) => document.id !== id)
     if (!next.length) next = [createDocument('Без названия 1.png')]
     documentsRef.current = next
@@ -674,6 +677,16 @@ export default function App() {
     if (activeDocRef.current === id) activateDocument(next[Math.min(index, next.length - 1)].id)
     else setStatus(`Проект закрыт: ${doc.filename}`)
   }, [activateDocument])
+
+  const closeDocument = useCallback((id: string) => {
+    const doc = documentsRef.current.find((document) => document.id === id)
+    if (!doc) return
+    if (doc.dirty) {
+      setPendingClose({ id, filename: doc.filename })
+      return
+    }
+    performCloseDocument(id)
+  }, [performCloseDocument])
 
   const closeActiveProject = useCallback(() => closeDocument(activeDocRef.current), [closeDocument])
 
@@ -955,6 +968,8 @@ export default function App() {
       if (typing || showShortcuts) return
       // While a classic context menu is open it owns the keyboard: arrows navigate, Escape closes.
       if (document.querySelector('.classic-context-menu')) return
+      // In-app confirmation dialogs own Escape/Enter and block background shortcuts.
+      if (document.querySelector('.confirm-dialog')) return
       if (event.ctrlKey && !event.altKey && event.key === 'Tab') {
         event.preventDefault()
         cycleDocument(event.shiftKey ? -1 : 1)
@@ -1077,7 +1092,6 @@ export default function App() {
   }
 
   const resetTexture = () => {
-    if (!window.confirm('Создать новую текстуру? Все слои будут заменены.')) return
     pushHistory()
     const layer = createLayer('Слой 1')
     layersRef.current = [layer]
@@ -1101,34 +1115,34 @@ export default function App() {
   const activeToolLabel = tools.find((item) => item.id === tool)?.label ?? 'Карандаш'
 
   const selectionActions: ContextMenuItem[] = [
-    { label: 'Копировать', shortcut: shortcuts.copy, icon: <Copy size={14} />, action: copySelection },
+    { label: 'Копировать', shortcut: shortcuts.copy, icon: <XpIcon name="copy" size={14} />, action: copySelection },
     { label: 'Копировать объединённое', shortcut: shortcuts.copyMerged, icon: <Layers3 size={14} />, action: copyMerged },
-    { label: 'Вырезать', shortcut: shortcuts.cut, icon: <Scissors size={14} />, action: cutSelection },
-    { label: 'Вставить', shortcut: shortcuts.paste, icon: <ClipboardPaste size={14} />, disabled: !clipboard, action: pasteClipboard },
+    { label: 'Вырезать', shortcut: shortcuts.cut, icon: <XpIcon name="cut" size={14} />, action: cutSelection },
+    { label: 'Вставить', shortcut: shortcuts.paste, icon: <XpIcon name="paste" size={14} />, disabled: !clipboard, action: pasteClipboard },
     { label: 'Вставить в новый слой', shortcut: shortcuts.pasteNewLayer, icon: <Layers3 size={14} />, disabled: !clipboard, action: pasteClipboardAsNewLayer },
-    { label: 'Очистить выделение', shortcut: shortcuts.deleteSelection, icon: <Trash2 size={14} />, danger: true, action: deleteSelection },
+    { label: 'Очистить выделение', shortcut: shortcuts.deleteSelection, icon: <XpIcon name="delete" size={14} />, danger: true, action: deleteSelection },
     { separator: true },
     { label: 'Выделить весь холст', shortcut: shortcuts.selectAll, action: selectAll },
     { label: 'Снять выделение', shortcut: shortcuts.deselect, disabled: !selection, action: deselect },
   ]
 
   const fileMenu: ContextMenuItem[] = [
-    { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <Plus size={14} />, action: newProject },
-    { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <FileUp size={14} />, action: openProject },
-    { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <Save size={14} />, action: saveProject },
-    { label: 'Закрыть проект', shortcut: shortcuts.closeProject, icon: <X size={14} />, action: closeActiveProject },
+    { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <XpIcon name="newfolder" size={14} />, action: newProject },
+    { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <XpIcon name="folder" size={14} />, action: openProject },
+    { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <XpIcon name="save" size={14} />, action: saveProject },
+    { label: 'Закрыть проект', shortcut: shortcuts.closeProject, icon: <XpIcon name="delete" size={14} />, action: closeActiveProject },
     { separator: true },
-    { label: 'Открыть текстуру…', shortcut: shortcuts.open, icon: <FolderOpen size={14} />, action: openFile },
+    { label: 'Открыть текстуру…', shortcut: shortcuts.open, icon: <XpIcon name="open" size={14} />, action: openFile },
     { label: 'Импортировать как новый слой…', icon: <Layers3 size={14} />, action: openImportAsNewLayer },
     { label: 'Загрузить скин модели…', icon: <UserRound size={14} />, action: openSkinFile },
     { separator: true },
-    { label: 'Экспортировать PNG…', shortcut: shortcuts.export, icon: <Download size={14} />, action: exportPng },
+    { label: 'Экспортировать PNG…', shortcut: shortcuts.export, icon: <XpIcon name="bitmap" size={14} />, action: exportPng },
     { separator: true },
-    { label: 'Очистить текущую текстуру', icon: <Sparkles size={14} />, action: resetTexture },
+    { label: 'Очистить текущую текстуру', icon: <XpIcon name="application" size={14} />, action: resetTexture },
   ]
   const editMenu: ContextMenuItem[] = [
-    { label: 'Отменить', shortcut: shortcuts.undo, icon: <Undo2 size={14} />, disabled: history.length === 0, action: undo },
-    { label: 'Повторить', shortcut: shortcuts.redo, icon: <Redo2 size={14} />, disabled: future.length === 0, action: redo },
+    { label: 'Отменить', shortcut: shortcuts.undo, icon: <XpIcon name="undo" size={14} />, disabled: history.length === 0, action: undo },
+    { label: 'Повторить', shortcut: shortcuts.redo, icon: <XpIcon name="redo" size={14} />, disabled: future.length === 0, action: redo },
     { separator: true },
     ...selectionActions,
     { separator: true },
@@ -1145,15 +1159,15 @@ export default function App() {
     { label: 'Границы геометрии', checked: showModelBounds, action: () => setShowModelBounds((value) => !value) },
   ]
   const layerMenu: ContextMenuItem[] = [
-    { label: 'Новый слой', icon: <Plus size={14} />, action: addLayer },
-    { label: 'Дублировать слой', icon: <Copy size={14} />, disabled: !activeLayer, action: () => duplicateLayer(activeLayerId) },
+    { label: 'Новый слой', icon: <XpIcon name="newfolder" size={14} />, action: addLayer },
+    { label: 'Дублировать слой', icon: <XpIcon name="copy" size={14} />, disabled: !activeLayer, action: () => duplicateLayer(activeLayerId) },
     { label: 'Объединить с нижним', icon: <Merge size={14} />, disabled: activeLayerIndex <= 0, action: () => mergeDown(activeLayerId) },
     { separator: true },
     { label: 'Поднять слой', icon: <ChevronUp size={14} />, disabled: activeLayerIndex >= layers.length - 1, action: () => moveLayerBy(activeLayerId, 1) },
     { label: 'Опустить слой', icon: <ChevronDown size={14} />, disabled: activeLayerIndex <= 0, action: () => moveLayerBy(activeLayerId, -1) },
     { separator: true },
     { label: activeLayer?.visible ? 'Скрыть слой' : 'Показать слой', checked: activeLayer?.visible, action: () => toggleLayerVisibility(activeLayerId) },
-    { label: 'Удалить слой', danger: true, icon: <Trash2 size={14} />, disabled: layers.length < 2, action: () => deleteLayer(activeLayerId) },
+    { label: 'Удалить слой', danger: true, icon: <XpIcon name="delete" size={14} />, disabled: layers.length < 2, action: () => deleteLayer(activeLayerId) },
   ]
   const toolsMenu: ContextMenuItem[] = [
     ...tools.map((item) => ({ label: item.label, shortcut: shortcuts[item.shortcut], checked: tool === item.id, action: () => chooseTool(item.id) })),
@@ -1189,7 +1203,7 @@ export default function App() {
     <div className="app-shell" onContextMenu={appContextMenu}>
       <header className="topbar">
         <div className="brand-lockup">
-          <div className="brand-mark"><Layers3 size={19} /></div>
+          <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
           <div className="brand-text"><strong>Minecraft <span>Texture Studio</span></strong><small>PIXEL TEXTURE EDITOR</small></div>
         </div>
         <div className="document-title">
@@ -1250,7 +1264,7 @@ export default function App() {
         <button onClick={(event) => openContextMenu(event, [
           { label: 'Импортировать текстуру…', icon: <FileImage size={14} />, action: openFile },
           { label: 'Импортировать как новый слой…', icon: <Layers3 size={14} />, action: openImportAsNewLayer },
-          { label: 'Экспортировать PNG…', icon: <Download size={14} />, action: exportPng },
+          { label: 'Экспортировать PNG…', icon: <XpIcon name="bitmap" size={14} />, action: exportPng },
           { separator: true },
           { label: 'Показать UV-шаблон', checked: showUv, action: () => setShowUv((value) => !value) },
           { label: 'Показать пиксельную сетку', checked: showGrid, action: () => setShowGrid((value) => !value) },
@@ -1265,8 +1279,8 @@ export default function App() {
 
       <div className="workspace-toolbar">
         <div className="toolbar-center">
-          <button className="toolbar-action" onClick={undo} disabled={!history.length} title="Отменить"><Undo2 size={15} /></button>
-          <button className="toolbar-action" onClick={redo} disabled={!future.length} title="Повторить"><Redo2 size={15} /></button>
+          <button className="toolbar-action" onClick={undo} disabled={!history.length} title="Отменить"><XpIcon name="undo" size={16} /></button>
+          <button className="toolbar-action" onClick={redo} disabled={!future.length} title="Повторить"><XpIcon name="redo" size={16} /></button>
           <span className="toolbar-divider" />
           <button className={`toolbar-action ${activeGridVisible ? 'toolbar-action-active' : ''}`} onClick={toggleActiveGrid} title={`${activeGridTitle} (${shortcuts.toggleGrid})`} aria-label={activeGridTitle}><Grid2X2 size={15} /></button>
           <button className={`toolbar-action ${showUv ? 'toolbar-action-active' : ''}`} onClick={() => setShowUv((value) => !value)} title={`UV-шаблон (${shortcuts.toggleUv})`}><Eye size={15} /></button>
@@ -1411,6 +1425,19 @@ export default function App() {
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}
+      <ConfirmDialog
+        open={pendingClose !== null}
+        title="Закрытие проекта"
+        message={pendingClose ? `Закрыть проект «${pendingClose.filename}» без сохранения?` : ''}
+        confirmLabel="Закрыть"
+        cancelLabel="Отмена"
+        danger
+        onConfirm={() => {
+          if (pendingClose) performCloseDocument(pendingClose.id)
+          setPendingClose(null)
+        }}
+        onCancel={() => setPendingClose(null)}
+      />
     </div>
   )
 }

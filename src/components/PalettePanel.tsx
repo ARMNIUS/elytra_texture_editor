@@ -3,6 +3,7 @@ import type { CSSProperties, ChangeEvent, PointerEvent as ReactPointerEvent } fr
 import { Check, ChevronLeft, ChevronRight, Copy, Download, Pencil, Plus, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import { useContextMenu } from './ContextMenu'
 import ColorEditorWindow from './ColorEditorWindow'
+import ConfirmDialog from './ConfirmDialog'
 import { palettes } from '../data/palettes'
 import type { Palette } from '../data/palettes'
 import { hexToRgb, hsvToRgb, normalizeColor, normalizeRgbaColor, opaqueColor, parseRgba, rgbToHex, rgbToHsv, withAlpha } from '../utils/color'
@@ -167,6 +168,7 @@ export default function PalettePanel({ currentColor, secondaryColor, activeColor
   const [renameDraft, setRenameDraft] = useState('')
   const [colorWindowOpen, setColorWindowOpen] = useState(false)
   const [colorBaseline, setColorBaseline] = useState('#4ba3ff')
+  const [paletteToDelete, setPaletteToDelete] = useState<string | null>(null)
   const cancelRenameRef = useRef(false)
   const paletteInputRef = useRef<HTMLInputElement>(null)
 
@@ -352,10 +354,15 @@ export default function PalettePanel({ currentColor, secondaryColor, activeColor
 
   const deletePalette = () => {
     if (isBuiltin || isMyColors) return
-    if (!window.confirm(`Удалить палитру «${chosenPalette.name}»?`)) return
-    setUserPalettes((previous) => previous.filter((palette) => palette.name !== chosenPalette.name))
+    setPaletteToDelete(chosenPalette.name)
+  }
+
+  const confirmDeletePalette = () => {
+    if (!paletteToDelete) return
+    setUserPalettes((previous) => previous.filter((palette) => palette.name !== paletteToDelete))
     setPaletteName(palettes[0].name)
     setSelectedColorIndex(null)
+    setPaletteToDelete(null)
     onNotice?.('Палитра удалена')
   }
 
@@ -534,6 +541,16 @@ export default function PalettePanel({ currentColor, secondaryColor, activeColor
           onClose={() => setColorWindowOpen(false)}
         />
       )}
+      <ConfirmDialog
+        open={paletteToDelete !== null}
+        title="Удаление палитры"
+        message={`Удалить палитру «${paletteToDelete ?? ''}»? Это действие нельзя отменить.`}
+        confirmLabel="Удалить"
+        cancelLabel="Отмена"
+        danger
+        onConfirm={confirmDeletePalette}
+        onCancel={() => setPaletteToDelete(null)}
+      />
     </section>
   )
 }

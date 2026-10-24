@@ -1,7 +1,7 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
 import { ContextMenuProvider } from './components/ContextMenu'
 import { TEXTURE_PIXEL_COUNT } from './utils/layers'
@@ -71,7 +71,6 @@ beforeEach(() => {
   Object.assign(HTMLElement.prototype, { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn(), hasPointerCapture: vi.fn(() => true) })
   Object.assign(HTMLAnchorElement.prototype, { click: vi.fn() })
   Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:mts-test'), revokeObjectURL: vi.fn() })
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -83,7 +82,7 @@ describe('multiple projects', () => {
   it('creates a new project tab and switches to it', () => {
     const { container } = renderApp()
     expect(tabs(container)).toHaveLength(1)
-    expect(activeTabName(container)).toBe('elytra-texture.png')
+    expect(activeTabName(container)).toBe('elytra.png')
 
     fireEvent.click(screen.getByLabelText('Новый проект'))
     expect(tabs(container)).toHaveLength(2)
@@ -98,7 +97,7 @@ describe('multiple projects', () => {
     expect(tabs(container)).toHaveLength(2)
 
     fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
-    expect(activeTabName(container)).toBe('elytra-texture.png')
+    expect(activeTabName(container)).toBe('elytra.png')
     fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
     expect(activeTabName(container)).toBe('Без названия 1.png')
   })
@@ -119,7 +118,7 @@ describe('multiple projects', () => {
 
     // Back to tab 1.
     fireEvent.click(tabs(container)[0] as HTMLElement)
-    expect(activeTabName(container)).toBe('elytra-texture.png')
+    expect(activeTabName(container)).toBe('elytra.png')
     const first = await saveProject()
     expect(first.layers[0].pixels[5 * 64 + 5]).toBe(PAINT)
     expect(first.layers[0].pixels[20 * 64 + 20]).toBe(TRAIT)
@@ -141,16 +140,34 @@ describe('multiple projects', () => {
     drag(canvasElement(), [50, 50], [50, 50])
     expect(tabs(container)).toHaveLength(1)
 
-    const confirm = window.confirm as unknown as Mock
-    confirm.mockReturnValueOnce(false)
-    fireEvent.click(screen.getByLabelText('Закрыть elytra-texture.png'))
+    fireEvent.click(screen.getByLabelText('Закрыть elytra.png'))
+    const dialog = screen.getByRole('alertdialog', { name: 'Закрытие проекта' })
+    expect(dialog).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(tabs(container)).toHaveLength(1)
 
-    confirm.mockReturnValueOnce(true)
-    fireEvent.click(screen.getByLabelText('Закрыть elytra-texture.png'))
+    fireEvent.click(screen.getByLabelText('Закрыть elytra.png'))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Закрыть' }))
     // Closing the last tab creates a fresh empty project.
     expect(tabs(container)).toHaveLength(1)
     expect(activeTabName(container)).toBe('Без названия 1.png')
+  })
+
+  it('starts with the bundled elytra texture', async () => {
+    renderApp()
+    const project = await saveProject()
+    const opaque = project.layers[0].pixels.filter((pixel) => !pixel.endsWith('00'))
+    expect(opaque.length).toBeGreaterThan(100)
+    expect(project.layers[0].pixels).toHaveLength(2048)
+  })
+
+  it('clears the texture without opening a browser confirm', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
+    renderApp()
+    fireEvent.click(screen.getByTitle('Новая пустая текстура'))
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
   it('opens a project in a new tab when the current one is dirty', async () => {

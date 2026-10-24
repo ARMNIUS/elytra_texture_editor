@@ -1,12 +1,12 @@
-# AI coding brief — Minecraft Texture Studio 0.10.0
+# AI coding brief — Minecraft Texture Studio 0.10.1
 
 Project: React + TypeScript + Vite app with a Tauri 2 wrapper. Continue in the existing repository; never regenerate the app from scratch.
 
 ## Product goal
 A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2D tools and palette management, UV atlas guides, and an editable 3D model preview.
 
-## Current state (0.10.0)
-- `src/App.tsx`: workspace with multiple documents (`DocumentState[]` + active id). Each document owns layers, active layer, undo/redo, selection, zoom, model skin and dirty flag; the clipboard is global. Tab bar creates/switches/closes projects (`Ctrl+N`/`Ctrl+W`/`Ctrl+Tab`), opening a project adds a tab unless the only tab is pristine, dirty tabs confirm on close, and `beforeunload` warns about unsaved projects. All pixel edits write to the active layer; children receive `displayPixels` (composite + floating transform preview). A brush/eraser stroke is one undo step; selection move/resize commits one step; rotation/flip bakes immediately. Saving (`Ctrl+S`) writes only the active document.
+## Current state (0.10.1)
+- `src/App.tsx`: workspace with multiple documents (`DocumentState[]` + active id). Each document owns layers, active layer, undo/redo, selection, zoom, model skin and dirty flag; the clipboard is global. Tab bar creates/switches/closes projects (`Ctrl+N`/`Ctrl+W`/`Ctrl+Tab`), opening a project adds a tab unless the only tab is pristine, dirty tabs use the in-app `ConfirmDialog`, and `beforeunload` warns about unsaved projects. The initial document uses `src/data/defaultElytra.ts` (generated from `src/assets/elytra.png`); new projects start blank. All pixel edits write to the active layer; children receive `displayPixels` (composite + floating transform preview). A brush/eraser stroke is one undo step; selection move/resize commits one step; rotation/flip bakes immediately. Saving (`Ctrl+S`) writes only the active document.
 - `src/utils/layers.ts`: layer model, ID generation, flattening (`compositeLayers`), merge, reorder and naming helpers.
 - `src/utils/transform.ts`: pixel-block extraction, nearest-neighbour scaling, 90°/180° rotation, flips, source-over blitting and clamped selection bounds.
 - `src/utils/shapes.ts`: Bresenham lines, rectangle/ellipse outlines, selection normalization/clamping and hit tests.
@@ -17,14 +17,16 @@ A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2
 - `src/components/ColorEditorWindow.tsx`: draggable floating Win9x window with HSV + RGB + alpha sliders, numeric fields, HEX/HEXA input, A/B swatches (A restores the color from opening time) and click-to-restore.
 - `src/components/TextureCanvas.tsx`: 64×32 canvas with brush/eraser/fill/eyedropper/select/line/rect/ellipse tools, a pointer dot plus target-cell preview for every tool, animated two-tone selection marquee with 8 transform handles, pixel-exact shape preview, native non-passive wheel zoom, UV guides and context menu. Right-press menu opening is deferred to pointerup for painting tools because Chromium dispatches `contextmenu` on press.
 - `src/components/LayersPanel.tsx`: layer list (top-first), visibility, inline rename, add/duplicate/merge/reorder/delete, opacity slider and per-layer context menu.
-- `src/components/ElytraViewer.tsx`: `skinview3d` preview and raycast UV painting; the 3D pixel grid is generated as line geometry on both sides of the wing surface and is assigned to `gridLinesRef` (the 0.6.x bug was a missing assignment). Crouch pose uses the library's fully crouched wing angles (z=0.72, y=0.30, x=0.2618). 3D strokes also report `onStrokeStart`/`onStrokeEnd` so they undo as one step. Shape/selection tools leave camera orbiting untouched.
-- `src/components/PalettePanel.tsx`: the only palette surface — swatches, HSV wheel, value slider, HEX/HEXA, FG/BG, color add/delete, palette management and the entry point to the color editor window. The old configurator modal was removed deliberately.
+- `src/components/ElytraViewer.tsx`: `skinview3d` preview and raycast UV painting; the 3D pixel grid is generated as line geometry on both sides of the wing surface and is assigned to `gridLinesRef` (the 0.6.x bug was a missing assignment). The default player skin is `src/assets/steve.png`; imported skins override it. Crouch pose uses the library's fully crouched wing angles (z=0.72, y=0.30, x=0.2618). 3D strokes also report `onStrokeStart`/`onStrokeEnd` so they undo as one step. Shape/selection tools leave camera orbiting untouched.
+- `src/components/PalettePanel.tsx`: the only palette surface — swatches, HSV wheel, value slider, HEX/HEXA, FG/BG, color add/delete, palette management and the entry point to the color editor window. Palette deletion uses `ConfirmDialog`; there are no `window.confirm` calls left in `src`.
+- `src/components/ConfirmDialog.tsx`: portal-based Win9x message box with XP alert icon and Escape/Enter handling, used for dirty-tab close and palette deletion. `src/components/XpIcon.tsx` maps the resized Windows XP icons in `src/assets/xp/` for the brand, menus, undo/redo and dialogs.
+- `src/data/defaultElytra.ts`: generated 64×32 pixel array from `src/assets/elytra.png`; do not hand-edit it without regenerating from the PNG.
 - `src/components/ContextMenu.tsx`: single menu provider with viewport clamping, focus restore, Escape/resize/scroll handling and arrow-key navigation.
-- `src/components/ShortcutsModal.tsx`: remappable bindings with duplicate/reserved-key detection; `[`, `]`, `Shift` are reserved. Includes copy-merged, paste-into-new-layer, new/close project and tab cycling.
-- `src/styles.css`: single design stylesheet in the Win9x/early XP language, including the document tab bar. Keep it free of selectors no component renders.
-- `src/**/*.test.{ts,tsx}`: 104 Vitest checks, including server-rendered App smoke tests, jsdom interaction tests for layer management, selection/transform, color editing, pointer cursor, stroke-level undo, clipboard layer operations, multi-project tabs and project save/load/migration coverage.
+- `src/components/ShortcutsModal.tsx`: remappable bindings with duplicate/reserved-key detection; `[`, `]`, `Shift` are reserved. `normalizeShortcuts` migrates the old `U` collision (rectangle wins, UV overlay moves to `Ctrl+U`). Includes copy-merged, paste-into-new-layer, new/close project and tab cycling.
+- `src/styles.css`: single design stylesheet in the Win9x/early XP language, including the document tab bar, XP icon sizing, in-app dialog and the darker `#8f8f8f`/`#b8b8b8` transparency checker.
+- `src/**/*.test.{ts,tsx}`: 110 Vitest checks, including server-rendered App smoke tests, jsdom interaction tests for layer management, selection/transform, color editing, pointer cursor, stroke-level undo, clipboard layer operations, multi-project tabs, default texture, in-app confirmations, shortcut uniqueness/migration and project save/load/migration coverage.
 - `.github/workflows/build-windows.yml` + `docs/RELEASING.md`: Windows NSIS installer build on GitHub Actions and the publishing/release checklist.
-- `src-tauri/`: Tauri 2 shell with icons, explicit `main` window label and `capabilities/default.json`.
+- `src-tauri/`: Tauri 2 shell with icons (regenerated from the XP Paint icon), explicit `main` window label and `capabilities/default.json`.
 
 ## Requirements
 1. Preserve and improve the current retro design system; use reusable CSS classes/tokens rather than one-off visual patches.
@@ -33,12 +35,12 @@ A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2
 4. Keep browser mode (`npm run dev`) and desktop mode (`npm run tauri dev`) working. Run `npm run typecheck`, `npm test` and `npm run build` when dependencies are installed.
 5. Preserve PNG alpha; don't bake visual grid/UV guides or selection outlines into exported texture.
 6. Elytra UV picks must come from `Raycaster` intersection UVs, not approximate screen coordinates.
-7. Don't bundle original Minecraft assets or add cloud sync, telemetry, accounts or remote services.
+7. Don't add cloud sync, telemetry, accounts or remote services. User-requested local default textures live in `src/assets/`; keep them local and don't fetch assets at runtime.
 8. Keep palette and skin data local.
 9. `.mts` format version 2 must keep loading version 1 documents; do not raise the version without a migration path.
 
 ## Verification note
-`npm run typecheck`, `npm test` (104 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. The Windows NSIS installer is built with Rust 1.99.1 + VS Build Tools 2022 + Tauri 2.12.5 at `src-tauri/target/release/bundle/nsis/Minecraft Texture Studio_0.10.0_x64-setup.exe` (unsigned; rebuild after changes). GUI launch cannot be tested from the agent shell (the sandbox cannot create windows); verify it manually on the desktop. `src-tauri/Cargo.lock` is committed; keep it updated when dependencies change.
+`npm run typecheck`, `npm test` (110 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. The Windows NSIS installer is built with Rust 1.99.1 + VS Build Tools 2022 + Tauri 2.12.5 at `src-tauri/target/release/bundle/nsis/Minecraft Texture Studio_0.10.1_x64-setup.exe` (unsigned; rebuild after changes). GUI launch cannot be tested from the agent shell (the sandbox cannot create windows); verify it manually on the desktop. `src-tauri/Cargo.lock` is committed; keep it updated when dependencies change.
 
 ## Next increments
 - Non-rectangular selection and floating selection move/transform.

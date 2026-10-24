@@ -30,38 +30,3 @@ export const palettes: Palette[] = [
 ]
 
 export const transparentPixel = '#00000000'
-
-export function makeStarterTexture(): string[] {
-  const texture = Array.from({ length: 64 * 32 }, () => transparentPixel)
-  const set = (x: number, y: number, color: string) => {
-    if (x >= 0 && x < 64 && y >= 0 && y < 32) texture[y * 64 + x] = color
-  }
-
-  // Skinview3D's elytra box uses the cape-sized 64x32 UV atlas.
-  // Fill the actual wing UV islands with a small neutral demo pattern.
-  for (let y = 0; y < 22; y++) {
-    for (let x = 22; x < 48; x++) {
-      const belongsToUvIsland = y >= 2 || (x >= 24 && x < 44)
-      if (!belongsToUvIsland) continue
-      const edge = y === 2 || y === 21 || x === 22 || x === 47
-      const panel = x >= 36 ? '#536779' : '#738396'
-      set(x, y, edge ? '#344454' : panel)
-    }
-  }
-  for (let x = 24; x < 34; x++) {
-    set(x, 4, '#9ec6d8')
-    set(x, 5, '#9ec6d8')
-    if (x % 2 === 0) set(x, 6, '#759fb6')
-  }
-  for (let y = 8; y < 19; y++) {
-    const x = 28 + Math.floor((y - 8) / 2)
-    set(x, y, '#c7dbe4')
-    set(x - 1, y, '#9ec6d8')
-  }
-  // Thin bands on the top/bottom UV faces.
-  for (let x = 24; x < 44; x++) {
-    set(x, 0, '#344454')
-    set(x, 1, '#738396')
-  }
-  return texture
-}

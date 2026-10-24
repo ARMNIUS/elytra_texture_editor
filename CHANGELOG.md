@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 — No browser dialogs, real defaults and XP icons
+
+- Removed every `window.confirm` from the app. Closing a dirty tab and deleting a palette now use an in-app Win9x `ConfirmDialog`; “Очистить текущую текстуру” no longer asks at all (the action is undoable).
+- Fixed the `U` collision: rectangle stays on `U`, the UV overlay moved to `Ctrl+U`. Stored shortcut maps are migrated on load, and a new test asserts unique default bindings.
+- The initial project now contains the bundled `elytra.png` texture (the same pixels as the user's file), and the 3D preview uses `steve.png` as its default player skin. Imported skins and textures still override them.
+- The 2D transparency checker is darker (`#8f8f8f` / `#b8b8b8`) so white and light pixels remain readable.
+- Windows XP icons from the user's set are used for the brand mark, File/Edit/Layer menu actions, toolbar undo/redo, and confirmation dialog; the app and NSIS installer icon are generated from the XP Paint icon.
+- Tests: 110 (default texture, no browser confirm, shortcut conflict migration, plus the 0.10.0 tab tests).
+
 ## 0.10.0 — Multiple projects in tabs, wider crouch wings
 
 ### Projects and tabs

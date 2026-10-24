@@ -6,6 +6,7 @@ import { useContextMenu } from './ContextMenu'
 import { createTextureCanvas, pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../utils/texture'
 import { makeUvGridGeometry } from '../utils/uvGrid'
 import { transparentPixel } from '../data/palettes'
+import defaultSkinUrl from '../assets/steve.png'
 import type { ToolId } from '../App'
 
 type Props = {
@@ -31,42 +32,6 @@ type Props = {
   onToggleBounds: () => void
   onToggleCrouch: () => void
   onToggleAutoRotate: () => void
-}
-
-function makeNeutralSkin(): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 64
-  const context = canvas.getContext('2d')!
-  context.clearRect(0, 0, 64, 64)
-  const fill = (x: number, y: number, w: number, h: number, color: string) => {
-    context.fillStyle = color
-    context.fillRect(x, y, w, h)
-  }
-  fill(8, 0, 8, 8, '#c7a184')
-  fill(8, 8, 8, 8, '#c7a184')
-  fill(8, 0, 8, 2, '#5b4638')
-  fill(10, 4, 1, 1, '#372f2b')
-  fill(13, 4, 1, 1, '#372f2b')
-  fill(20, 20, 8, 12, '#506f8c')
-  fill(20, 32, 8, 12, '#506f8c')
-  fill(28, 20, 8, 12, '#506f8c')
-  fill(28, 32, 8, 12, '#506f8c')
-  fill(44, 20, 4, 12, '#c7a184')
-  fill(40, 20, 4, 12, '#c7a184')
-  fill(0, 20, 4, 12, '#353c4a')
-  fill(4, 20, 4, 12, '#353c4a')
-  fill(0, 32, 4, 12, '#353c4a')
-  fill(4, 32, 4, 12, '#353c4a')
-  fill(0, 48, 4, 12, '#242a34')
-  fill(4, 48, 4, 12, '#242a34')
-  fill(8, 48, 4, 12, '#242a34')
-  fill(12, 48, 4, 12, '#242a34')
-  fill(16, 48, 4, 12, '#242a34')
-  fill(20, 48, 4, 12, '#242a34')
-  fill(24, 48, 4, 12, '#242a34')
-  fill(28, 48, 4, 12, '#242a34')
-  return canvas.toDataURL('image/png')
 }
 
 export default function ElytraViewer({
@@ -96,7 +61,7 @@ export default function ElytraViewer({
       canvas,
       width: Math.max(hostRef.current.clientWidth, 320),
       height: Math.max(hostRef.current.clientHeight, 320),
-      skin: makeNeutralSkin(),
+      skin: defaultSkinUrl,
       enableControls: true,
     })
     viewer.background = 0x202329
@@ -216,7 +181,7 @@ export default function ElytraViewer({
     }
     const viewer = viewerRef.current
     if (!viewer) return
-    const skin = skinUrl || makeNeutralSkin()
+    const skin = skinUrl || defaultSkinUrl
     viewer.loadSkin(skin).catch((error: unknown) => {
       console.error('Could not load player skin:', error)
       onNotice?.('Не удалось загрузить скин модели')

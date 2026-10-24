@@ -34,9 +34,17 @@ export const defaultShortcuts: ShortcutMap = {
   export: 'Ctrl+Shift+E',
   newProject: 'Ctrl+N',
   closeProject: 'Ctrl+W',
-  toggleUv: 'U',
+  toggleUv: 'Ctrl+U',
   toggleGrid: 'H',
   toggleView: 'V',
+}
+
+export function normalizeShortcuts(input: Partial<ShortcutMap>): ShortcutMap {
+  const merged = { ...defaultShortcuts, ...input }
+  // Older builds bound both the rectangle tool and the UV overlay to "U".
+  // Rectangle wins; move the overlay to Ctrl+U instead of silently shadowing it.
+  if (merged.toggleUv === merged.rect) merged.toggleUv = 'Ctrl+U'
+  return merged
 }
 
 const shortcutLabels: Array<{ id: ShortcutId; label: string; group: string }> = [
