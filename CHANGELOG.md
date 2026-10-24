@@ -5,6 +5,7 @@
 - Turning the alpha slider to 0 no longer destroys the color: RGB is preserved in the color string (`#rrggbb00`) and the H/S/V/R/G/B sliders keep their values, so raising alpha restores the original color. Added `formatRgbaExact` for the picker while the compositing formatter keeps emitting `#00000000` for fully transparent pixels.
 - The color window close button now works. The title bar no longer captures pointer events that originated on its buttons, so their click handlers fire.
 - Removed the instructional hint at the bottom of the color window.
+- Windows packaging: the identifier was changed from `com.minecrafttexturestudio.app` to `com.minecrafttexturestudio.editor` (removes the Tauri macOS-extension warning), `Cargo.lock` is committed for reproducible installer builds, and the NSIS `.exe` was built and verified locally (2.03 MiB, unsigned).
 - Tests: 98 (alpha-zero round trip, close-button pointer flow, hint absence).
 
 ## 0.9.0 — Precise color editing, movable selections, pixel shape previews and a slimmer UI

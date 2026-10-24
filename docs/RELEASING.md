@@ -23,6 +23,15 @@ The installer is written to:
 src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.9.1_x64-setup.exe
 ```
 
+A verified build on this machine produced a 2.03 MiB installer (portable binary: 8.67 MiB).
+It is **unsigned**; Windows SmartScreen may warn on other machines until a code-signing
+certificate is configured. The installer itself was generated with NSIS and Tauri's
+package verification passed. GUI launch cannot be automated from the authoring sandbox,
+so always smoke-test the installer manually.
+
+`src-tauri/Cargo.lock` is committed to keep dependency versions reproducible. If you change
+Rust dependencies, rebuild once and commit the updated lockfile.
+
 The MSI target can be built with `--bundles msi` instead of `nsis` (NSIS is the requested
 "full .exe" installer). Without the C++ Build Tools the Rust build fails at the linking
 step; without administrator rights on the machine you cannot install them.

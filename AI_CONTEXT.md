@@ -38,7 +38,7 @@ A pixel-art editor for Minecraft skin, cape and elytra textures: Aseprite-like 2
 9. `.mts` format version 2 must keep loading version 1 documents; do not raise the version without a migration path.
 
 ## Verification note
-`npm run typecheck`, `npm test` (98 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. Building the Tauri installer needs `cargo` + MSVC Build Tools, which are not installed here, so `npm run tauri build` remains unverified locally; use the GitHub Actions workflow for the `.exe`.
+`npm run typecheck`, `npm test` (98 checks) and `npm run build` pass in this workspace, and the Vite dev server serves all modules. The Windows NSIS installer was built successfully with Rust 1.99.1 + VS Build Tools 2022 + Tauri 2.12.5 at `src-tauri/target/release/bundle/nsis/Minecraft Texture Studio_0.9.1_x64-setup.exe` (unsigned). GUI launch cannot be tested from the agent shell (the sandbox cannot create windows); verify it manually on the desktop. `src-tauri/Cargo.lock` is committed; keep it updated when dependencies change.
 
 ## Next increments
 - Non-rectangular selection and floating selection move/transform.

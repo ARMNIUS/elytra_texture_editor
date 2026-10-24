@@ -63,6 +63,14 @@ npm run tauri build -- --bundles nsis
 
 The installer is created under `src-tauri\target\release\bundle\nsis\`. Icons live in `src-tauri/icons/`, and the window permissions are declared in `src-tauri/capabilities/default.json`.
 
+A verified local build (Rust 1.99.1, VS Build Tools 2022, Tauri 2.12.5) produced:
+
+```
+src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.9.1_x64-setup.exe
+```
+
+The installer is **not code-signed**, so Windows SmartScreen may show a warning on other machines. The raw portable binary is `src-tauri\target\release\minecraft-texture-studio.exe`. GUI launch cannot be smoke-tested from the automated workspace (its sandbox cannot create windows); launch the installer or portable `.exe` normally on the desktop to verify.
+
 ### Build the .exe on GitHub (no local Rust/MSVC needed)
 
 The repository ships `.github/workflows/build-windows.yml`. It runs the checks, builds the NSIS installer on a `windows-latest` runner and uploads it as an artifact. Pushing a `v*` tag also attaches the `.exe` to a draft GitHub release:
