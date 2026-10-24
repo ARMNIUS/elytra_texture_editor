@@ -7,6 +7,7 @@ import ConfirmDialog from './ConfirmDialog'
 import { palettes } from '../data/palettes'
 import type { Palette } from '../data/palettes'
 import { hexToRgb, hsvToRgb, normalizeColor, normalizeRgbaColor, opaqueColor, parseRgba, rgbToHex, rgbToHsv, withAlpha } from '../utils/color'
+import { shortcutKey } from '../utils/shortcutKey'
 
 type Props = {
   currentColor: string
@@ -399,9 +400,10 @@ export default function PalettePanel({ currentColor, secondaryColor, activeColor
       const target = event.target as HTMLElement | null
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || event.ctrlKey || event.altKey || event.metaKey) return
       // The shortcut editor and the color window own the keyboard while open.
-      if (document.querySelector('.shortcuts-modal') || document.querySelector('.color-editor-window')) return
-      if (event.key === '[') { event.preventDefault(); cycleColor(-1) }
-      if (event.key === ']') { event.preventDefault(); cycleColor(1) }
+      if (document.querySelector('.shortcuts-modal') || document.querySelector('.color-editor-window') || document.querySelector('.confirm-dialog')) return
+      const key = shortcutKey(event)
+      if (key === '[') { event.preventDefault(); cycleColor(-1) }
+      if (key === ']') { event.preventDefault(); cycleColor(1) }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0 — Real `.mts` files, working PNG export and layout-independent keys
+
+- Desktop save/open now use native Windows dialogs (`tauri-plugin-dialog`) and Rust file-write commands instead of anchor downloads. **Сохранить** (`Ctrl+S`) writes to the current `.mts` path or asks for one; **Сохранить как…** (`Ctrl+Shift+S`) always asks. **Открыть проект** uses the native open dialog.
+- `.mts` sessions store layers, active layer, selection, editor settings (including zoom and skin), shortcuts and palettes. Opening a project restores all of it, and a subsequent `Ctrl+S` overwrites the same file.
+- PNG export opens a native save dialog and writes only the flattened composite to the chosen path; the browser fallback uses the File System Access API when available.
+- New projects now start with the bundled elytra texture and the default Steve skin, not an empty canvas.
+- Keyboard shortcuts are layout-independent: Russian `ы` still fires `S`, `я` fires `Z`, and so on. Shortcut recording stores the same Latin keys. The old `U` conflict remains fixed (`U` rectangle, `Ctrl+U` UV).
+- Tests: 118 (`.mts`/PNG file naming, layout-independent key mapping, new-project default texture, `Ctrl+S`/`Ctrl+Shift+S`).
+
 ## 0.10.1 — No browser dialogs, real defaults and XP icons
 
 - Removed every `window.confirm` from the app. Closing a dirty tab and deleting a palette now use an in-app Win9x `ConfirmDialog`; “Очистить текущую текстуру” no longer asks at all (the action is undoable).

@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -86,8 +86,8 @@ describe('multiple projects', () => {
 
     fireEvent.click(screen.getByLabelText('Новый проект'))
     expect(tabs(container)).toHaveLength(2)
-    expect(activeTabName(container)).toBe('Без названия 1.png')
-    expect((container.querySelector('.document-title input') as HTMLInputElement).value).toBe('Без названия 1.png')
+    expect(activeTabName(container)).toBe('Без названия 1.mts')
+    expect((container.querySelector('.document-title input') as HTMLInputElement).value).toBe('Без названия 1.mts')
     expect(container.querySelectorAll('.document-tab-active')).toHaveLength(1)
   })
 
@@ -99,7 +99,7 @@ describe('multiple projects', () => {
     fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
     expect(activeTabName(container)).toBe('elytra.png')
     fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
-    expect(activeTabName(container)).toBe('Без названия 1.png')
+    expect(activeTabName(container)).toBe('Без названия 1.mts')
   })
 
   it('keeps pixels and history per tab', async () => {
@@ -151,7 +151,7 @@ describe('multiple projects', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Закрыть' }))
     // Closing the last tab creates a fresh empty project.
     expect(tabs(container)).toHaveLength(1)
-    expect(activeTabName(container)).toBe('Без названия 1.png')
+    expect(activeTabName(container)).toBe('Без названия 1.mts')
   })
 
   it('starts with the bundled elytra texture', async () => {
@@ -160,6 +160,23 @@ describe('multiple projects', () => {
     const opaque = project.layers[0].pixels.filter((pixel) => !pixel.endsWith('00'))
     expect(opaque.length).toBeGreaterThan(100)
     expect(project.layers[0].pixels).toHaveLength(2048)
+  })
+
+  it('loads the default elytra texture into a new project', async () => {
+    renderApp()
+    fireEvent.click(screen.getByLabelText('Новый проект'))
+    const project = await saveProject()
+    expect(project.layers[0].pixels.filter((pixel) => !pixel.endsWith('00')).length).toBeGreaterThan(100)
+  })
+
+  it('saves with Ctrl+S and Ctrl+Shift+S even on a Russian layout', () => {
+    renderApp()
+    const createObjectURL = URL.createObjectURL as unknown as Mock
+    const before = createObjectURL.mock.calls.length
+    fireEvent.keyDown(window, { key: 'ы', code: 'KeyS', ctrlKey: true })
+    expect(createObjectURL.mock.calls.length).toBe(before + 1)
+    fireEvent.keyDown(window, { key: 'Ы', code: 'KeyS', ctrlKey: true, shiftKey: true })
+    expect(createObjectURL.mock.calls.length).toBe(before + 2)
   })
 
   it('clears the texture without opening a browser confirm', () => {

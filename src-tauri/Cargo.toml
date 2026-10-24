@@ -1,6 +1,6 @@
 [package]
 name = "minecraft-texture-studio"
-version = "0.10.1"
+version = "0.11.0"
 description = "Minecraft pixel texture editor with 3D preview"
 authors = ["Minecraft Texture Studio contributors"]
 edition = "2021"
@@ -14,3 +14,4 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"

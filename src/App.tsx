@@ -21,7 +21,7 @@ import type { ShortcutId, ShortcutMap } from './components/ShortcutsModal'
 import { transparentPixel } from './data/palettes'
 import { defaultElytraPixels } from './data/defaultElytra'
 import {
-  clearRegion, copyRegion, exportPixelsAsPng, floodFill, paintPoints, pasteRegion, readImageFile,
+  clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelsToPngBlob, readImageFile,
   TEXTURE_HEIGHT, TEXTURE_WIDTH,
 } from './utils/texture'
 import type { PixelRegion } from './utils/texture'
@@ -35,6 +35,12 @@ import { applyTransform, blitBlock, blockSelection, extractBlock, scaleBlock } f
 import type { PixelBlock, TransformKind, TransformRect } from './utils/transform'
 import { linePoints, rectHeight, rectWidth, shapePoints } from './utils/shapes'
 import type { SelectionRect, Shape } from './utils/shapes'
+import { shortcutKey } from './utils/shortcutKey'
+import {
+  basename, ensureExtension, isDesktopRuntime, pickOpenPath, pickSavePath, readTextFile,
+  saveBlobInBrowser, toPngName, toProjectName, writeBinaryFile, writeTextFile,
+} from './utils/files'
+import type { BrowserFileHandle } from './utils/files'
 
 export type ToolId = 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'
 type ViewMode = '2d' | 'split' | '3d'
@@ -53,6 +59,7 @@ type DocumentState = {
   skinUrl: string | null
   skinFilename: string
   zoom: number
+  projectPath: string | null
 }
 
 function createDocument(filename: string, layers?: Layer[], overrides: Partial<DocumentState> = {}): DocumentState {
@@ -69,15 +76,20 @@ function createDocument(filename: string, layers?: Layer[], overrides: Partial<D
     skinUrl: null,
     skinFilename: '',
     zoom: 10,
+    projectPath: null,
     ...overrides,
   }
+}
+
+function createDefaultDocument(filename: string): DocumentState {
+  return createDocument(filename, [createLayer('Слой 1', [...defaultElytraPixels])])
 }
 
 function nextUntitledName(documents: DocumentState[]): string {
   const names = new Set(documents.map((document) => document.filename))
   let index = 1
-  while (names.has(`Без названия ${index}.png`)) index += 1
-  return `Без названия ${index}.png`
+  while (names.has(`Без названия ${index}.mts`)) index += 1
+  return `Без названия ${index}.mts`
 }
 
 function resolveValue<T>(value: T | ((previous: T) => T), previous: T): T {
@@ -132,6 +144,7 @@ type ProjectFileV2 = {
   filename: string
   activeLayerId: string
   layers: ProjectLayerData[]
+  selection?: SelectionRect | null
   settings: ProjectSettings
   shortcuts: ShortcutMap
   palettes: { userPalettes: unknown; savedColors: unknown; activePalette: string }
@@ -147,6 +160,17 @@ function readLocalJson(key: string, fallback: unknown): unknown {
 function toPngFilename(name: string): string {
   const base = name.replace(/\.(png|mts|json)$/i, '').trim()
   return `${base || 'elytra-texture'}.png`
+}
+
+function readProjectSelection(value: unknown): SelectionRect | null {
+  if (typeof value !== 'object' || value === null) return null
+  const rect = value as { x0?: unknown; y0?: unknown; x1?: unknown; y1?: unknown }
+  if (![rect.x0, rect.y0, rect.x1, rect.y1].every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate))) return null
+  const x0 = Math.max(0, Math.min(TEXTURE_WIDTH - 1, Math.round(rect.x0 as number)))
+  const y0 = Math.max(0, Math.min(TEXTURE_HEIGHT - 1, Math.round(rect.y0 as number)))
+  const x1 = Math.max(0, Math.min(TEXTURE_WIDTH - 1, Math.round(rect.x1 as number)))
+  const y1 = Math.max(0, Math.min(TEXTURE_HEIGHT - 1, Math.round(rect.y1 as number)))
+  return x1 >= x0 && y1 >= y0 ? { x0, y0, x1, y1 } : null
 }
 
 function isElytraAtlasSize(width: number, height: number): boolean {
@@ -171,7 +195,7 @@ const tools: Array<{ id: ToolId; label: string; icon: typeof Brush; shortcut: Sh
 ]
 
 function shortcutMatches(event: KeyboardEvent, shortcut: string): boolean {
-  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key
+  const key = shortcutKey(event)
   const parts = shortcut.split('+')
   const targetKey = parts[parts.length - 1]
   const wantsCtrl = parts.includes('Ctrl')
@@ -182,9 +206,10 @@ function shortcutMatches(event: KeyboardEvent, shortcut: string): boolean {
 
 export default function App() {
   const { openContextMenu } = useContextMenu()
-  const [documents, setDocuments] = useState<DocumentState[]>(() => [createDocument('elytra.png', [createLayer('Слой 1', [...defaultElytraPixels])])])
+  const [documents, setDocuments] = useState<DocumentState[]>(() => [createDefaultDocument('elytra.png')])
   const [activeDocumentId, setActiveDocumentId] = useState(() => documents[0].id)
   const [pendingClose, setPendingClose] = useState<{ id: string; filename: string } | null>(null)
+  const browserProjectHandlesRef = useRef(new Map<string, BrowserFileHandle>())
   const documentsRef = useRef(documents)
   const activeDocRef = useRef(activeDocumentId)
   const layersRef = useRef(documents[0].layers)
@@ -196,7 +221,7 @@ export default function App() {
   const transformSnapshotRef = useRef<Snapshot | null>(null)
 
   const activeDocument = documents.find((document) => document.id === activeDocumentId) ?? documents[0]
-  const { layers, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future } = activeDocument
+  const { layers, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future, projectPath } = activeDocument
 
   const writeActiveDocument = useCallback((updater: (document: DocumentState) => DocumentState) => {
     const current = documentsRef.current
@@ -262,6 +287,10 @@ export default function App() {
 
   const setZoom = useCallback((value: number | ((previous: number) => number)) => {
     writeActiveDocument((document) => ({ ...document, zoom: resolveValue(value, document.zoom) }))
+  }, [writeActiveDocument])
+
+  const setProjectPath = useCallback((value: string | null) => {
+    writeActiveDocument((document) => ({ ...document, projectPath: value }))
   }, [writeActiveDocument])
   const [currentColor, setCurrentColor] = useState('#4ba3ff')
   const [secondaryColor, setSecondaryColor] = useState('#ffffff')
@@ -658,7 +687,7 @@ export default function App() {
   }, [cancelSelectionTransform, endStroke, floating])
 
   const newProject = useCallback(() => {
-    const doc = createDocument(nextUntitledName(documentsRef.current))
+    const doc = createDefaultDocument(nextUntitledName(documentsRef.current))
     const next = [...documentsRef.current, doc]
     documentsRef.current = next
     setDocuments(next)
@@ -671,7 +700,7 @@ export default function App() {
     if (index < 0) return
     const doc = current[index]
     let next = current.filter((document) => document.id !== id)
-    if (!next.length) next = [createDocument('Без названия 1.png')]
+    if (!next.length) next = [createDefaultDocument('Без названия 1.mts')]
     documentsRef.current = next
     setDocuments(next)
     if (activeDocRef.current === id) activateDocument(next[Math.min(index, next.length - 1)].id)
@@ -805,7 +834,6 @@ export default function App() {
   }, [])
   const openFile = useCallback(() => openTexture('active'), [openTexture])
   const openImportAsNewLayer = useCallback(() => openTexture('new'), [openTexture])
-  const openProject = useCallback(() => projectInputRef.current?.click(), [])
   const openSkinFile = useCallback(() => skinInputRef.current?.click(), [])
   const chooseTool = useCallback((nextTool: ToolId) => {
     setTool((currentTool) => {
@@ -824,66 +852,126 @@ export default function App() {
     setStatus('Основной и фоновый цвета поменяны местами')
   }, [currentColor, secondaryColor])
   const exportPng = useCallback(() => {
-    const target = toPngFilename(filename)
-    exportPixelsAsPng(pixels, target)
-    setFilename(target)
-    setStatus(`PNG экспортирован: ${target} (слои объединены)`)
+    const target = toPngName(filename)
+    void (async () => {
+      try {
+        const blob = await pixelsToPngBlob(pixels)
+        if (isDesktopRuntime()) {
+          const selected = await pickSavePath(target, [{ name: 'PNG image', extensions: ['png'] }], 'Экспорт PNG')
+          if (!selected) return
+          const finalPath = ensureExtension(selected, 'png')
+          await writeBinaryFile(finalPath, new Uint8Array(await blob.arrayBuffer()))
+          setStatus(`PNG сохранён: ${basename(finalPath)}`)
+        } else {
+          const result = await saveBlobInBrowser(blob, target, { accept: { 'image/png': ['.png'] } })
+          if (result.saved) {
+            setStatus(`PNG сохранён: ${basename(result.handle?.name ?? target)}`)
+          }
+        }
+      } catch (error) {
+        console.error(error)
+        setStatus(`Не удалось экспортировать PNG: ${error instanceof Error ? error.message : 'ошибка'}`)
+      }
+    })()
   }, [filename, pixels])
 
-  const saveProject = useCallback(() => {
-    const project: ProjectFileV2 = {
-      format: 'minecraft-texture-studio-project',
-      version: 2,
-      filename,
-      activeLayerId: activeLayerIdRef.current,
-      layers: layersRef.current.map((layer) => ({
-        id: layer.id,
-        name: layer.name,
-        visible: layer.visible,
-        opacity: layer.opacity,
-        pixels: layer.pixels,
-      })),
-      settings: {
-        currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv,
-        show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename,
-      },
-      shortcuts,
-      palettes: {
-        userPalettes: readLocalJson('mts-user-palettes-v1', []),
-        savedColors: readLocalJson('mts-saved-colors-v1', []),
-        activePalette: localStorage.getItem('mts-active-palette-v1') ?? 'Minecraft · Classic',
-      },
+  const buildProjectFile = useCallback((): ProjectFileV2 => ({
+    format: 'minecraft-texture-studio-project',
+    version: 2,
+    filename,
+    activeLayerId: activeLayerIdRef.current,
+    layers: layersRef.current.map((layer) => ({
+      id: layer.id,
+      name: layer.name,
+      visible: layer.visible,
+      opacity: layer.opacity,
+      pixels: layer.pixels,
+    })),
+    selection,
+    settings: {
+      currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv,
+      show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename,
+    },
+    shortcuts,
+    palettes: {
+      userPalettes: readLocalJson('mts-user-palettes-v1', []),
+      savedColors: readLocalJson('mts-saved-colors-v1', []),
+      activePalette: localStorage.getItem('mts-active-palette-v1') ?? 'Minecraft · Classic',
+    },
+  }), [filename, selection, currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
+
+  const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean) => {
+    const activeId = activeDocRef.current
+    const handle = saveAs ? undefined : browserProjectHandlesRef.current.get(activeId)
+    const name = toProjectName(filename)
+    const result = await saveBlobInBrowser(
+      new Blob([json], { type: 'application/x-minecraft-texture-studio' }),
+      name,
+      { handle, accept: { 'application/x-minecraft-texture-studio': ['.mts'] } },
+    )
+    if (!result.saved) return
+    if (result.handle) browserProjectHandlesRef.current.set(activeId, result.handle)
+    if (activeDocRef.current === activeId) {
+      setFilename(basename(result.handle?.name ?? name))
+      setDirty(false)
     }
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/x-minecraft-texture-studio' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${(filename || 'elytra-texture').replace(/\.(png|mts|json)$/i, '') || 'elytra-texture'}.mts`
-    anchor.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-    setDirty(false)
     setStatus(`Проект сохранён (.mts) · ${layersRef.current.length} сл.`)
-  }, [filename, currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
+  }, [filename, setDirty, setFilename])
+
+  const saveProject = useCallback((saveAs = false) => {
+    const json = JSON.stringify(buildProjectFile(), null, 2)
+    if (!isDesktopRuntime()) {
+      void saveProjectInBrowser(json, saveAs)
+      return
+    }
+    const activeId = activeDocRef.current
+    const proposed = projectPath ?? toProjectName(filename)
+    void (async () => {
+      try {
+        const selected = !saveAs && projectPath
+          ? projectPath
+          : await pickSavePath(proposed, [{ name: 'Minecraft Texture Studio project', extensions: ['mts'] }], 'Сохранить проект')
+        if (!selected) return
+        const finalPath = ensureExtension(selected, 'mts')
+        await writeTextFile(finalPath, json)
+        if (activeDocRef.current === activeId) {
+          setProjectPath(finalPath)
+          setFilename(basename(finalPath))
+          setDirty(false)
+        }
+        setStatus(`Проект сохранён: ${basename(finalPath)}`)
+      } catch (error) {
+        console.error(error)
+        setStatus(`Не удалось сохранить проект: ${error instanceof Error ? error.message : 'ошибка'}`)
+      }
+    })()
+  }, [buildProjectFile, filename, projectPath, setDirty, setFilename, setProjectPath, saveProjectInBrowser])
+
+  const saveProjectAs = useCallback(() => saveProject(true), [saveProject])
 
   const handlePickColor = useCallback((pickedColor: string) => {
     if (pickedColor !== transparentPixel) selectPaletteColor(pickedColor)
     setTool((activeTool) => activeTool === 'eyedropper' ? previousToolRef.current : activeTool)
   }, [selectPaletteColor])
 
-  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string) => {
+  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; selection?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string, projectPath: string | null = null) => {
     if (floating) cancelSelectionTransform()
     const settings = project.settings as Partial<ProjectSettings>
     const activeId = nextLayers.some((layer) => layer.id === requestedActiveId) ? requestedActiveId : nextLayers[nextLayers.length - 1].id
-    const loadedFilename = typeof project.filename === 'string'
-      ? project.filename
-      : fileName.replace(/\.(mts|json)$/i, '.png')
+    const loadedFilename = projectPath
+      ? basename(projectPath)
+      : typeof project.filename === 'string'
+        ? project.filename
+        : fileName.replace(/\.(mts|json)$/i, '.png')
     const doc = createDocument(loadedFilename, nextLayers, {
       activeLayerId: activeId,
+      selection: readProjectSelection(project.selection),
       skinUrl: typeof settings.skinUrl === 'string' ? settings.skinUrl : null,
       skinFilename: typeof settings.skinFilename === 'string' ? settings.skinFilename : '',
       zoom: typeof settings.zoom === 'number' && Number.isFinite(settings.zoom)
         ? Math.min(2048, Math.max(2, Math.round(settings.zoom)))
         : 10,
+      projectPath,
     })
     const currentDocs = documentsRef.current
     // A single untouched "new document" tab is replaced instead of leaving an empty tab behind.
@@ -922,11 +1010,9 @@ export default function App() {
     setStatus(`Проект загружен: ${fileName}`)
   }
 
-  const handleOpenProjectFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const loadProjectText = (text: string, fileName: string, projectPath: string | null) => {
     try {
-      const parsed: unknown = JSON.parse(await file.text())
+      const parsed: unknown = JSON.parse(text)
       if (typeof parsed !== 'object' || parsed === null) throw new Error('Файл проекта повреждён')
       const project = parsed as Record<string, unknown>
       if (project.format !== 'minecraft-texture-studio-project') throw new Error('Неподдерживаемый формат проекта')
@@ -944,10 +1030,33 @@ export default function App() {
         if (!isPixelArray(project.pixels)) throw new Error('В проекте нет корректной текстуры 64×32')
         nextLayers = layersFromPixels(project.pixels)
       }
-      applyProject(nextLayers, requestedActiveId, project, file.name)
+      applyProject(nextLayers, requestedActiveId, project, fileName, projectPath)
     } catch (error) {
       console.error(error)
       setStatus(error instanceof Error ? `Ошибка проекта: ${error.message}` : 'Не удалось открыть проект')
+    }
+  }
+
+  const openProject = async () => {
+    if (!isDesktopRuntime()) {
+      projectInputRef.current?.click()
+      return
+    }
+    try {
+      const path = await pickOpenPath([{ name: 'Minecraft Texture Studio project', extensions: ['mts', 'json'] }], 'Открыть проект')
+      if (!path) return
+      loadProjectText(await readTextFile(path), basename(path), path)
+    } catch (error) {
+      console.error(error)
+      setStatus(`Не удалось открыть проект: ${error instanceof Error ? error.message : 'ошибка'}`)
+    }
+  }
+
+  const handleOpenProjectFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      loadProjectText(await file.text(), file.name, null)
     } finally {
       event.target.value = ''
     }
@@ -993,6 +1102,7 @@ export default function App() {
         case 'open': openFile(); break
         case 'openProject': openProject(); break
         case 'saveProject': saveProject(); break
+        case 'saveProjectAs': saveProjectAs(); break
         case 'newProject': newProject(); break
         case 'closeProject': closeActiveProject(); break
         case 'export': exportPng(); break
@@ -1025,7 +1135,7 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, exportPng, swapColors, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
+  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, saveProjectAs, exportPng, swapColors, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
 
   const handleImportSkin = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1129,7 +1239,8 @@ export default function App() {
   const fileMenu: ContextMenuItem[] = [
     { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <XpIcon name="newfolder" size={14} />, action: newProject },
     { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <XpIcon name="folder" size={14} />, action: openProject },
-    { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <XpIcon name="save" size={14} />, action: saveProject },
+    { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <XpIcon name="save" size={14} />, action: () => saveProject() },
+    { label: 'Сохранить как…', shortcut: shortcuts.saveProjectAs, icon: <XpIcon name="save" size={14} />, action: saveProjectAs },
     { label: 'Закрыть проект', shortcut: shortcuts.closeProject, icon: <XpIcon name="delete" size={14} />, action: closeActiveProject },
     { separator: true },
     { label: 'Открыть текстуру…', shortcut: shortcuts.open, icon: <XpIcon name="open" size={14} />, action: openFile },

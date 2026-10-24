@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Keyboard } from 'lucide-react'
+import { shortcutKey } from '../utils/shortcutKey'
 
 export type ShortcutId =
   | 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'
   | 'undo' | 'redo' | 'swapColors' | 'copy' | 'copyMerged' | 'cut' | 'paste' | 'pasteNewLayer' | 'deleteSelection' | 'selectAll' | 'deselect'
-  | 'open' | 'openProject' | 'saveProject' | 'export' | 'newProject' | 'closeProject'
+  | 'open' | 'openProject' | 'saveProject' | 'saveProjectAs' | 'export' | 'newProject' | 'closeProject'
   | 'toggleUv' | 'toggleGrid' | 'toggleView'
 export type ShortcutMap = Record<ShortcutId, string>
 
@@ -31,6 +32,7 @@ export const defaultShortcuts: ShortcutMap = {
   open: 'Ctrl+O',
   openProject: 'Ctrl+Shift+O',
   saveProject: 'Ctrl+S',
+  saveProjectAs: 'Ctrl+Shift+S',
   export: 'Ctrl+Shift+E',
   newProject: 'Ctrl+N',
   closeProject: 'Ctrl+W',
@@ -71,6 +73,7 @@ const shortcutLabels: Array<{ id: ShortcutId; label: string; group: string }> = 
   { id: 'newProject', label: 'Новый проект', group: 'ФАЙЛ' },
   { id: 'openProject', label: 'Открыть проект .mts', group: 'ФАЙЛ' },
   { id: 'saveProject', label: 'Сохранить проект .mts', group: 'ФАЙЛ' },
+  { id: 'saveProjectAs', label: 'Сохранить проект как…', group: 'ФАЙЛ' },
   { id: 'closeProject', label: 'Закрыть проект', group: 'ФАЙЛ' },
   { id: 'export', label: 'Экспорт PNG', group: 'ФАЙЛ' },
   { id: 'toggleUv', label: 'Показать / скрыть UV', group: 'ВИД' },
@@ -92,7 +95,7 @@ type Props = {
 
 function normalizeEventKey(event: KeyboardEvent): string | null {
   if (['Control', 'Shift', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Escape'].includes(event.key)) return null
-  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key
+  const key = shortcutKey(event)
   const modifiers: string[] = []
   if (event.ctrlKey || event.metaKey) modifiers.push('Ctrl')
   if (event.altKey) modifiers.push('Alt')

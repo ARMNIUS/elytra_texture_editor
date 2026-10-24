@@ -28,6 +28,16 @@ export function createTextureCanvas(pixels: string[]): HTMLCanvasElement {
   return canvas
 }
 
+export function pixelsToPngBlob(pixels: string[]): Promise<Blob> {
+  const canvas = createTextureCanvas(pixels)
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob)
+      else reject(new Error('Не удалось закодировать PNG'))
+    }, 'image/png')
+  })
+}
+
 export function exportPixelsAsPng(pixels: string[], filename = 'elytra-texture.png'): void {
   const canvas = createTextureCanvas(pixels)
   canvas.toBlob((blob) => {

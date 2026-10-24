@@ -1,12 +1,14 @@
-# Minecraft Texture Studio — 0.10.1
+# Minecraft Texture Studio — 0.11.0
 
 A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 2D pixel canvas, layers, selection, shape tools, UV guides and a live 3D preview. The interface uses a Windows 95/98 / early Windows XP visual style, with bevelled controls, blue title strips and custom context menus.
 
-## Features in 0.10.1
+## Features in 0.11.0
 
 - 64×32 transparent RGBA texture canvas with brush, eraser, flood fill, eyedropper, zoom and a precise pointer dot plus target-pixel preview.
-- **Multiple projects in tabs**: each tab keeps its own layers, history, selection, zoom and model skin; the clipboard is shared. New (`Ctrl+N`), open, save and close (`Ctrl+W`) work per tab, and `Ctrl+Tab` cycles them.
-- The first project opens the bundled `elytra.png`; the 3D preview uses `steve.png` by default. A new project starts blank, and clearing the current texture is undoable and never opens a browser dialog.
+- **Multiple projects in tabs**: each tab keeps its own layers, history, selection, zoom and model skin; the clipboard is shared. New (`Ctrl+N`), open, save (`Ctrl+S`), save as (`Ctrl+Shift+S`) and close (`Ctrl+W`) work per tab, and `Ctrl+Tab` cycles them.
+- **Real desktop files**: the `.mts` project is written through a native save dialog and contains the full session (layers, selection, editor settings, skin, palettes and shortcuts). Open uses a native file dialog and saves directly back to the chosen path.
+- **Working PNG export** through a native “save as” dialog (browser fallback uses the File System Access API or a download).
+- New projects start with the bundled `elytra.png` texture and the default `steve.png` skin; clearing the current texture is undoable and never opens a browser dialog.
 - A whole brush or eraser drag undoes in one step, in 2D and in 3D painting.
 - Rectangular selection that clips every drawing operation, plus copy/cut/paste, copy merged, paste into a new layer, clear selection, select all and deselect.
 - Selection transform: drag inside the selection to move its pixels, drag the eight handles to stretch them, and use the header buttons for 90°/180° rotation and horizontal/vertical flips. Every transform is one undo step and Escape cancels it.
@@ -23,7 +25,8 @@ A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 
 - Windows 95/98 and early XP visual language: grey panels, bevelled buttons, blue title bars, compact toolbars and a shared keyboard-navigable context menu system.
 - Context menus on the 2D canvas, 3D preview, palette and swatches, layers, tools, plus menus for File, Edit, View, Image, Layer, Tools, Settings and Help.
 - Separate player-skin import, texture PNG import/export, undo/redo, an unsaved-changes indicator and configurable keyboard shortcuts with conflict detection.
-- `.mts` project format version 2: layers, active layer, visibility, opacity, editor settings, shortcuts, palettes and imported skin. Version 1 projects are migrated on open.
+- Keyboard shortcuts are layout-independent: with a Russian layout `Ctrl+ы` fires save, `B` stays on the physical B key, and shortcut recording stores Latin labels. Rectangle is `U`, the UV overlay is `Ctrl+U`.
+- `.mts` project format version 2 stores layers, active layer, **selection**, editor settings (including zoom and skin), shortcuts and palettes. Version 1 projects are migrated on open.
 - Tauri 2 wrapper with app icons and a default capability manifest for desktop packaging.
 
 ## Run in a browser first
@@ -70,7 +73,7 @@ The installer is created under `src-tauri\target\release\bundle\nsis\`. Icons li
 A verified local build (Rust 1.99.1, VS Build Tools 2022, Tauri 2.12.5) produced:
 
 ```
-src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.10.1_x64-setup.exe
+src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.11.0_x64-setup.exe
 ```
 
 The installer is **not code-signed**, so Windows SmartScreen shows a warning: choose «Подробнее» → «Выполнить в любом случае». The raw portable binary is `src-tauri\target\release\minecraft-texture-studio.exe`. The UI is also verified with headless Chromium (tabs, palette, 2D canvas and WebGL preview).
@@ -97,7 +100,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release c
 | Copy merged / paste into new layer | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
 | Clear selection / select all / deselect | `Delete` / `Ctrl+A` / `Ctrl+D` |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` |
-| Import PNG / open project / save project / export PNG | `Ctrl+O` / `Ctrl+Shift+O` / `Ctrl+S` / `Ctrl+Shift+E` |
+| Import PNG / open project / save project / save as / export PNG | `Ctrl+O` / `Ctrl+Shift+O` / `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+Shift+E` |
 | New project / close project / cycle tabs | `Ctrl+N` / `Ctrl+W` / `Ctrl+Tab` |
 | Swap FG/BG | `X` |
 | Previous / next palette color | `[` / `]` |
@@ -123,7 +126,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release c
 
 ## Verification
 
-`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 110 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, in-app dirty-close confirmation, open-as-tab), the bundled default texture, unique shortcut bindings and the old U/UV migration, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
+`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 118 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, in-app dirty-close confirmation, open-as-tab), the bundled default texture, unique shortcut bindings, the old U/UV migration and layout-independent key mapping, `.mts`/PNG file naming, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
 
 Known limitations:
 
