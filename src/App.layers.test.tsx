@@ -20,7 +20,9 @@ function layerRows(container: HTMLElement) {
 }
 
 beforeEach(() => {
+  localStorage.clear()
   HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext
+  Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:palette-test'), revokeObjectURL: vi.fn() })
 })
 
 afterEach(() => {
@@ -87,8 +89,73 @@ describe('layers panel integration', () => {
   it('keeps the palette manager inside the dock', () => {
     const { container } = renderApp()
     expect(container.querySelector('.palette-config-modal')).toBeNull()
-    for (const title of ['Новая палитра', 'Дублировать палитру', 'Переименовать палитру', 'Удалить палитру', 'Импорт палитры (.gpl/.hex/.txt/.json)', 'Экспорт палитры (.gpl)']) {
-      expect(screen.getAllByTitle(title).length).toBeGreaterThan(0)
+    expect(screen.getByTitle('Палитра заблокирована от изменений (A)')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Действия с палитрой'))
+    for (const label of ['Новая палитра', 'Дублировать палитру', 'Переименовать палитру', 'Импортировать палитру…', 'Экспортировать .gpl…', 'Удалить палитру']) {
+      expect(screen.getByText(label)).toBeTruthy()
     }
+  })
+
+  it('exports the current palette as .gpl', () => {
+    renderApp()
+    fireEvent.click(screen.getByLabelText('Действия с палитрой'))
+    fireEvent.click(screen.getByText('Экспортировать .gpl…'))
+    expect(URL.createObjectURL).toHaveBeenCalled()
+  })
+
+  it('starts locked but still allows explicit color additions', () => {
+    const { container } = renderApp()
+    expect(screen.getByTitle('Палитра заблокирована от изменений (A)')).toBeTruthy()
+    expect((screen.getByRole('button', { name: /В палитру/ }) as HTMLButtonElement).disabled).toBe(false)
+
+    fireEvent.change(screen.getByLabelText('HEX текущего цвета'), { target: { value: '#123456' } })
+    fireEvent.click(screen.getByLabelText('Добавить цвет в палитру'))
+    expect(screen.getByRole('option', { name: /Minecraft · Classic — копия/ })).toBeTruthy()
+    expect(screen.getByTitle('Палитра заблокирована от изменений (A)')).toBeTruthy()
+    const swatches = container.querySelectorAll('.ase-swatch-grid .swatch:not(.swatch-add)')
+    expect((swatches[swatches.length - 1] as HTMLElement).style.backgroundColor).toBe('rgb(18, 52, 86)')
+  })
+
+  it('selects and edits only one of several duplicate swatches', () => {
+    localStorage.setItem('mts-user-palettes-v1', JSON.stringify([
+      { name: 'Dupes', colors: ['#ff0000', '#ff0000', '#00ff00'] },
+    ]))
+    localStorage.setItem('mts-active-palette-v1', 'Dupes')
+    const { container } = renderApp()
+    const swatches = container.querySelectorAll('.ase-swatch-grid .swatch:not(.swatch-add)')
+    expect(swatches).toHaveLength(3)
+
+    fireEvent.click(swatches[1] as HTMLElement)
+    expect(container.querySelectorAll('.swatch-active')).toHaveLength(1)
+    expect(swatches[1].classList.contains('swatch-active')).toBe(true)
+
+    fireEvent.click(screen.getByTitle('Палитра заблокирована от изменений (A)'))
+    fireEvent.change(screen.getByLabelText('HEX текущего цвета'), { target: { value: '#0000ff' } })
+    const edited = container.querySelectorAll('.ase-swatch-grid .swatch:not(.swatch-add)')
+    expect((edited[0] as HTMLElement).style.backgroundColor).toBe('rgb(255, 0, 0)')
+    expect((edited[1] as HTMLElement).style.backgroundColor).toBe('rgb(0, 0, 255)')
+    expect((edited[2] as HTMLElement).style.backgroundColor).toBe('rgb(0, 255, 0)')
+  })
+
+  it('locks the palette with the button and the A key', () => {
+    renderApp()
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(screen.getByTitle('Палитра доступна для редактирования (A)')).toBeTruthy()
+    expect((screen.getByRole('button', { name: /В палитру/ }) as HTMLButtonElement).disabled).toBe(false)
+
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(screen.getByTitle('Палитра заблокирована от изменений (A)')).toBeTruthy()
+  })
+
+  it('does not overwrite a selected swatch while the palette is locked', () => {
+    renderApp()
+    fireEvent.click(screen.getByTitle(/^1: #171717/))
+    fireEvent.change(screen.getByLabelText('HEX текущего цвета'), { target: { value: '#ff0000' } })
+    expect(screen.queryByRole('option', { name: /копия/ })).toBeNull()
+
+    fireEvent.click(screen.getByTitle('Палитра заблокирована от изменений (A)'))
+    fireEvent.click(screen.getByTitle(/^1: #171717/))
+    fireEvent.change(screen.getByLabelText('HEX текущего цвета'), { target: { value: '#00ff00' } })
+    expect(screen.getByRole('option', { name: /Minecraft · Classic — копия/ })).toBeTruthy()
   })
 })

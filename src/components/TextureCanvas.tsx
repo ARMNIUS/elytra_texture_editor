@@ -14,7 +14,6 @@ type Props = {
   pixels: string[]
   tool: ToolId
   color: string
-  secondaryColor: string
   zoom: number
   showGrid: boolean
   showUv: boolean
@@ -108,7 +107,7 @@ function isShapeTool(tool: ToolId): tool is ShapeTool {
 }
 
 export default function TextureCanvas({
-  pixels, tool, color, secondaryColor, zoom, showGrid, showUv, shortcuts, selection, selectionActions,
+  pixels, tool, color, zoom, showGrid, showUv, shortcuts, selection, selectionActions,
   transformRect, onTransformStart, onTransformUpdate, onTransformCommit, onTransformCancel,
   onZoomChange, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onDrawShape, onSelectionChange, onPick, onCursor, onUndo, onRedo,
   canUndo, canRedo, onToggleGrid, onToggleUv, onZoomReset, onSetTool, onImportTexture, onExportTexture, onClearTexture,
@@ -129,7 +128,6 @@ export default function TextureCanvas({
   const lastClientRef = useRef<{ x: number; y: number } | null>(null)
   const [hoverPixel, setHoverPixel] = useState<[number, number] | null>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
-  const [rightButtonHeld, setRightButtonHeld] = useState(false)
   const [draftShape, setDraftShape] = useState<Shape | null>(null)
   const [draftSelection, setDraftSelection] = useState<SelectionRect | null>(null)
   const [hoverHandle, setHoverHandle] = useState<HandleId | 'inside' | null>(null)
@@ -207,7 +205,7 @@ export default function TextureCanvas({
 
   const hoverIndex = hoverPixel ? pixelIndex(hoverPixel[0], hoverPixel[1]) : -1
   const oldHoverColor = hoverIndex >= 0 ? (pixels[hoverIndex] ?? transparentPixel) : transparentPixel
-  const previewColor = tool === 'eraser' || tool === 'eyedropper' ? oldHoverColor : (rightButtonHeld ? secondaryColor : color)
+  const previewColor = tool === 'eraser' || tool === 'eyedropper' ? oldHoverColor : color
   // Painting tools preview the resulting color in the target cell; selection and shape
   // tools only outline the cell, and the cursor dot shows the exact pointer position.
   const filledPreview = tool === 'brush' || tool === 'eraser' || tool === 'fill' || tool === 'eyedropper'
@@ -218,7 +216,6 @@ export default function TextureCanvas({
     rightPressRef.current = null
     rightDragRef.current = false
     menuOpenedByPressRef.current = false
-    setRightButtonHeld(false)
   }
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -233,10 +230,10 @@ export default function TextureCanvas({
     lastClientRef.current = { x: event.clientX, y: event.clientY }
     updatePointer(event)
     setHoverPixel([x, y])
-    setRightButtonHeld(event.button === 2)
     onCursor(x, y)
 
-    // A stationary right click opens the editor context menu. Right-drag still paints with BG.
+    // A stationary right click opens the editor context menu. Right-drag still
+    // paints with the current color.
     if (event.button === 2) {
       rightPressRef.current = { pixel: [x, y], clientX: event.clientX, clientY: event.clientY }
       rightDragRef.current = false
@@ -287,7 +284,6 @@ export default function TextureCanvas({
     lastClientRef.current = { x: event.clientX, y: event.clientY }
     updatePointer(event)
     setHoverPixel([x, y])
-    setRightButtonHeld((event.buttons & 2) !== 0)
     onCursor(x, y)
 
     const pendingRight = rightPressRef.current
@@ -295,7 +291,7 @@ export default function TextureCanvas({
       const distance = Math.hypot(event.clientX - pendingRight.clientX, event.clientY - pendingRight.clientY)
       if (distance > 3) {
         rightDragRef.current = true
-        const strokeColor = tool === 'eraser' ? transparentPixel : secondaryColor
+        const strokeColor = tool === 'eraser' ? transparentPixel : color
         dragRef.current = { kind: 'stroke', lastPixel: pendingRight.pixel, color: strokeColor }
         onStrokeStart()
         onPaintLine(pendingRight.pixel[0], pendingRight.pixel[1], pendingRight.pixel[0], pendingRight.pixel[1], strokeColor)

@@ -20,7 +20,7 @@ npm run tauri build -- --bundles nsis
 The installer is written to:
 
 ```
-src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.11.0_x64-setup.exe
+src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.12.0_x64-setup.exe
 ```
 
 A verified build on this machine produced a 2.22 MiB installer (portable binary: 8.7 MiB).
@@ -44,8 +44,8 @@ so no local Rust/MSVC installation is required:
 1. Push the repository to GitHub (see below).
 2. Open **Actions → Build Windows installer → Run workflow**, or push a version tag:
    ```powershell
-   git tag v0.11.0
-   git push origin v0.11.0
+   git tag v0.12.0
+   git push origin v0.12.0
    ```
 3. Download the `minecraft-texture-studio-windows-x64` artifact, or publish the draft release
    that is created automatically for tags.

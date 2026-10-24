@@ -1,6 +1,6 @@
 [package]
 name = "minecraft-texture-studio"
-version = "0.11.0"
+version = "0.12.0"
 description = "Minecraft pixel texture editor with 3D preview"
 authors = ["Minecraft Texture Studio contributors"]
 edition = "2021"

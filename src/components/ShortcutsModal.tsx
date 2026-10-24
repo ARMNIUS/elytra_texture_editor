@@ -4,7 +4,7 @@ import { shortcutKey } from '../utils/shortcutKey'
 
 export type ShortcutId =
   | 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'
-  | 'undo' | 'redo' | 'swapColors' | 'copy' | 'copyMerged' | 'cut' | 'paste' | 'pasteNewLayer' | 'deleteSelection' | 'selectAll' | 'deselect'
+  | 'undo' | 'redo' | 'copy' | 'copyMerged' | 'cut' | 'paste' | 'pasteNewLayer' | 'deleteSelection' | 'selectAll' | 'deselect'
   | 'open' | 'openProject' | 'saveProject' | 'saveProjectAs' | 'export' | 'newProject' | 'closeProject'
   | 'toggleUv' | 'toggleGrid' | 'toggleView'
 export type ShortcutMap = Record<ShortcutId, string>
@@ -20,7 +20,6 @@ export const defaultShortcuts: ShortcutMap = {
   ellipse: 'O',
   undo: 'Ctrl+Z',
   redo: 'Ctrl+Y',
-  swapColors: 'X',
   copy: 'Ctrl+C',
   copyMerged: 'Ctrl+Shift+C',
   cut: 'Ctrl+X',
@@ -42,7 +41,11 @@ export const defaultShortcuts: ShortcutMap = {
 }
 
 export function normalizeShortcuts(input: Partial<ShortcutMap>): ShortcutMap {
-  const merged = { ...defaultShortcuts, ...input }
+  const merged: ShortcutMap = { ...defaultShortcuts }
+  for (const id of Object.keys(defaultShortcuts) as ShortcutId[]) {
+    const value = input[id]
+    if (typeof value === 'string' && value.length > 0) merged[id] = value
+  }
   // Older builds bound both the rectangle tool and the UV overlay to "U".
   // Rectangle wins; move the overlay to Ctrl+U instead of silently shadowing it.
   if (merged.toggleUv === merged.rect) merged.toggleUv = 'Ctrl+U'
@@ -60,7 +63,6 @@ const shortcutLabels: Array<{ id: ShortcutId; label: string; group: string }> = 
   { id: 'ellipse', label: 'Эллипс', group: 'ИНСТРУМЕНТЫ' },
   { id: 'undo', label: 'Отменить действие', group: 'РЕДАКТИРОВАНИЕ' },
   { id: 'redo', label: 'Повторить действие', group: 'РЕДАКТИРОВАНИЕ' },
-  { id: 'swapColors', label: 'Поменять FG / BG', group: 'РЕДАКТИРОВАНИЕ' },
   { id: 'copy', label: 'Копировать выделение', group: 'ВЫДЕЛЕНИЕ' },
   { id: 'copyMerged', label: 'Копировать объединённое', group: 'ВЫДЕЛЕНИЕ' },
   { id: 'cut', label: 'Вырезать выделение', group: 'ВЫДЕЛЕНИЕ' },
@@ -84,7 +86,7 @@ const shortcutLabels: Array<{ id: ShortcutId; label: string; group: string }> = 
 const shortcutLabelById = new Map(shortcutLabels.map((item) => [item.id, item.label]))
 
 // Palette cycling and pose preview own these keys directly.
-const RESERVED_SHORTCUTS = ['[', ']', 'Shift']
+const RESERVED_SHORTCUTS = ['[', ']', 'A', 'Shift']
 
 type Props = {
   shortcuts: ShortcutMap

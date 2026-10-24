@@ -66,7 +66,6 @@ button:disabled { opacity: .32; cursor: not-allowed !important; }
 .toolbar-spacer { flex: 1; }
 .tool-color-stack { width: 30px; height: 30px; position: relative; margin-bottom: 3px; }
 .foreground-color { position: absolute; width: 21px; height: 21px; left: 0; top: 0; border: 2px solid #c8cdd4; border-radius: 4px; z-index: 1; box-shadow: 0 1px 2px #0008; }
-.background-color { position: absolute; width: 20px; height: 20px; bottom: 0; right: 0; border: 1px solid #747c89; border-radius: 4px; background-color: #e0e0e0; background-image: linear-gradient(45deg, #b6bcc6 25%, transparent 25%), linear-gradient(-45deg, #b6bcc6 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #b6bcc6 75%), linear-gradient(-45deg, transparent 75%, #b6bcc6 75%); background-size: 8px 8px; background-position: 0 0, 0 4px, 4px -4px, -4px 0; }
 
 .editor-area, .preview-area { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: #202329; border-right: 1px solid var(--border); }
 .editor-area-hidden, .preview-area-hidden { display: none; }
@@ -191,9 +190,7 @@ button:disabled { opacity: .32; cursor: not-allowed !important; }
 .right-tools .tool-stack { gap: 7px; }
 .right-tools .tool-button { width: 40px; }
 .right-tools .tool-color-stack { margin-top: 4px; }
-.right-tools .foreground-color, .right-tools .background-color { display: block; padding: 0; cursor: pointer; }
-.right-tools .background-color { background-image: none; }
-.swap-colors-button { margin-top: 2px; }
+.right-tools .foreground-color { display: block; padding: 0; cursor: pointer; }
 .preview-tools { gap: 3px; }
 .preview-tools .tiny-action { width: 23px; height: 24px; flex: 0 0 23px; }
 .viewer-canvas-paint { cursor: crosshair; }
@@ -235,19 +232,12 @@ button:disabled { opacity: .32; cursor: not-allowed !important; }
 .ase-value-slider::-moz-range-thumb { width: 4px; height: 13px; border: 1px solid #f3f6fa; border-radius: 1px; background: #222831; box-shadow: 0 0 0 1px #000; }
 .ase-color-index-row { display: grid; grid-template-columns: minmax(38px, 1fr) auto 27px 27px; gap: 4px; align-items: center; }
 .ase-color-index { display: flex; align-items: center; justify-content: center; height: 26px; min-width: 0; overflow: hidden; padding: 0 4px; border: 1px solid #08090a; outline: 1px solid #48505b; border-radius: 4px; background: #292d34; color: #cbd3df; font: 9px var(--mono); white-space: nowrap; }
-.ase-slot-switch { display: flex; gap: 3px; }
-.ase-slot-switch button { display: flex; align-items: center; gap: 3px; min-height: 25px; padding: 0 4px; border: 1px solid #3c424c; border-radius: 3px; background: #24282e; color: #8a94a2; font-size: 8px; cursor: pointer; }
-.ase-slot-switch button.active { border-color: #9abde5; background: #34485f; color: #e1edfd; }
-.ase-slot-switch i { display: inline-block; width: 10px; height: 10px; border: 1px solid #ffffff60; border-radius: 1px; }
 .ase-color-cycle { min-height: 26px; width: 27px; height: 26px; }
 .ase-hex-row { display: grid; grid-template-columns: 28px minmax(0,1fr) 22px; align-items: center; gap: 5px; margin-top: 8px; padding: 4px; border: 1px solid #08090b; outline: 1px solid #414852; border-radius: 4px; background: #282c33; }
 .ase-hex-row > span:first-child { color: #8792a0; font: 8px var(--mono); text-align: center; }
 .ase-hex-row input { width: 100%; min-width: 0; height: 22px; padding: 0 6px; border: 1px solid #383e48; border-radius: 2px; outline: none; background: #17191d; color: #e0e4ec; font: 10px var(--mono); text-transform: uppercase; }
 .ase-hex-row input:focus { border-color: #6e9dcf; }
 .ase-hex-preview { width: 20px; height: 20px; border: 1px solid #ffffff66; outline: 1px solid #090a0c; border-radius: 2px; }
-.ase-palette-actions { display: grid; grid-template-columns: minmax(0, 1fr) 30px 30px 30px; gap: 4px; margin-top: 8px; }
-.ase-palette-actions .subtle-button { min-width: 0; min-height: 27px; padding: 0 5px; border-radius: 3px; font-size: 8px; }
-.ase-palette-actions .subtle-button:not(:first-child) { padding: 0; }
 .aseprite-palette-panel .panel-note { margin-top: 7px; font-size: 7px; }
 @media (max-width: 1200px) {
   .aseprite-palette-panel { padding-left: 8px; padding-right: 8px; }
@@ -373,9 +363,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 .tool-button kbd { color: #444; font: 8px "Lucida Console", monospace; }
 .tool-separator { background: #808080; box-shadow: 0 1px #fff; }
 .tool-color-stack { width: 32px; height: 32px; }
-.foreground-color, .background-color { border-radius: 0 !important; box-shadow: none; }
 .foreground-color { border: 2px solid #111; outline: 1px solid #fff; }
-.background-color { border: 2px solid #fff; outline: 1px solid #111; }
 .toolbar-spacer { flex: 1; }
 
 /* Compact classic controls used by palette, UV tools, settings and dialogs */
@@ -395,15 +383,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 .ase-value-slider { width: min(132px,100%); height: 12px; border: 2px inset #d4d0c8; outline: none; border-radius: 0; }
 .ase-value-slider::-webkit-slider-thumb { width: 7px; border-radius: 0; background: #d4d0c8; }
 .ase-color-index { height: 23px; border: 2px inset #d4d0c8; outline: none; border-radius: 0; background: #fff; color: #111; font: 10px "Lucida Console", monospace; }
-.ase-slot-switch button { min-height: 23px; padding: 0 4px; border: 1px solid; border-color: #fff #404040 #404040 #fff; border-radius: 0; background: #d4d0c8; color: #111; font-size: 9px; }
-.ase-slot-switch button.active { border-color: #404040 #fff #fff #404040; background: #d4d0c8; color: #111; }
-.ase-slot-switch i { width: 10px; height: 10px; border: 1px solid #111; border-radius: 0; }
 .ase-color-cycle { height: 23px; min-height: 23px; border-radius: 0; }
 .ase-hex-row { border: 2px inset #d4d0c8; outline: none; border-radius: 0; background: #fff; }
 .ase-hex-row > span:first-child { color: #111; font: 9px Tahoma,sans-serif; }
 .ase-hex-row input { height: 21px; border: 1px solid #808080; border-radius: 0; background: #fff; color: #111; font: 10px "Lucida Console", monospace; }
 .ase-hex-preview { border: 1px solid #111; outline: 1px solid #fff; border-radius: 0; }
-.ase-palette-actions { gap: 3px; margin-top: 6px; grid-template-columns: minmax(0,1fr) 25px 25px 25px; }
 .subtle-button, .small-icon-button {
   min-height: 24px; padding: 0 6px; color: #111; background: #d4d0c8; border: 1px solid;
   border-color: #fff #404040 #404040 #fff; border-radius: 0; font-size: 10px; font-weight: 400;
@@ -554,7 +538,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 /* Keep the palette dock focused: its color editor sits at the bottom; no document/debug footer. */
 .left-sidebar { overflow-y: hidden !important; }
 .aseprite-palette-panel { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; }
-.ase-palette-name-row, .ase-swatch-grid, .ase-color-index-row, .ase-hex-row, .ase-palette-actions { flex-shrink: 0; }
+.ase-palette-name-row, .ase-swatch-grid, .ase-color-index-row, .ase-hex-row { flex-shrink: 0; }
 .ase-swatch-grid { flex: 0 0 auto; }
 .ase-color-wheel-wrap { margin-top: auto !important; flex: 0 0 auto; }
 .live-label { display: none !important; }
@@ -650,8 +634,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 .ase-rename-row .small-icon-button { width: 24px; height: 22px; min-height: 22px; }
 .ase-color-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 5px; }
 .ase-color-actions .subtle-button { min-height: 23px; padding: 0 4px; font-size: 9px; }
-.ase-palette-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.ase-palette-actions .small-icon-button { width: 100%; height: 24px; min-height: 24px; }
 
 /* The tool dock has to survive eight tools on short windows. */
 .right-tools { overflow-y: auto; overflow-x: hidden; }
@@ -831,3 +813,41 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 .confirm-actions button:active { border-color: #404040 #fff #fff #404040; box-shadow: inset 1px 1px #808080; }
 .confirm-actions .confirm-primary { outline: 1px solid #111; outline-offset: -3px; }
 .confirm-actions .confirm-danger { outline-color: #8b0000; }
+
+/* Center the 2D atlas both horizontally and vertically; scroll when it exceeds the viewport. */
+.canvas-stage {
+  display: grid !important;
+  place-items: center;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  height: max-content;
+  padding: 18px;
+}
+.pixel-canvas-wrap { margin: 0 !important; }
+
+/* ===== 0.12: single paint color, palette lock and less crowded palette controls ===== */
+.ase-palette-name-row { grid-template-columns: minmax(0, 1fr) 25px 25px !important; }
+.palette-lock-active {
+  color: #6b4d00 !important;
+  background: #f0dfb4 !important;
+  border-color: #404040 #fff #fff #404040 !important;
+  box-shadow: inset 1px 1px #b08d3c !important;
+}
+.ase-color-index-row { grid-template-columns: minmax(38px, 1fr) 24px 27px 27px !important; }
+.ase-current-chip { width: 24px; height: 23px; border: 1px solid #111; outline: 1px solid #fff; }
+.tool-color-stack { width: 30px; height: 30px; }
+.foreground-color.current-color { position: static; display: block; width: 28px; height: 28px; border: 2px solid #111; outline: 1px solid #fff; }
+.ase-color-actions .subtle-button { min-width: 0; }
+
+/* A quiet "+" swatch: explicit add, available even while the palette is locked. */
+.swatch-add {
+  display: grid;
+  place-items: center;
+  color: #111 !important;
+  background: #e9e5dc !important;
+  border: 1px dashed #555 !important;
+  box-shadow: inset 1px 1px #fff !important;
+}
+.swatch-add:hover { background: #fff !important; outline: 1px solid #0a246a; }
+.swatch-add svg { width: 14px; height: 14px; }

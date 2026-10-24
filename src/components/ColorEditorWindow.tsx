@@ -8,7 +8,6 @@ import type { HSV, RGB } from '../utils/color'
 type Props = {
   color: string
   baselineColor: string
-  slotLabel: string
   onPreview: (color: string) => void
   onClose: () => void
 }
@@ -23,7 +22,7 @@ function toRgbCss({ r, g, b }: RGB): string {
   return `rgb(${r}, ${g}, ${b})`
 }
 
-export default function ColorEditorWindow({ color, baselineColor, slotLabel, onPreview, onClose }: Props) {
+export default function ColorEditorWindow({ color, baselineColor, onPreview, onClose }: Props) {
   const [position, setPosition] = useState(() => ({
     x: typeof window === 'undefined' ? 260 : clamp(260, 8, Math.max(8, window.innerWidth - 348)),
     y: typeof window === 'undefined' ? 120 : clamp(120, 8, Math.max(8, window.innerHeight - 420)),
@@ -141,7 +140,7 @@ export default function ColorEditorWindow({ color, baselineColor, slotLabel, onP
       style={{ left: position.x, top: position.y }}
       role="dialog"
       aria-modal="false"
-      aria-label={`Редактор цвета (${slotLabel})`}
+      aria-label="Редактор цвета"
     >
       <header
         className="color-editor-titlebar"
@@ -150,7 +149,7 @@ export default function ColorEditorWindow({ color, baselineColor, slotLabel, onP
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        <span>ЦВЕТ · {slotLabel}</span>
+        <span>ЦВЕТ</span>
         <button
           type="button"
           className="color-editor-close"

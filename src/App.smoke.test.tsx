@@ -28,9 +28,9 @@ describe('App shell', () => {
 
   it('keeps the dock controls for palette management', () => {
     const html = renderApp()
-    expect(html).toContain('Переименовать палитру')
-    expect(html).toContain('Дублировать палитру')
-    expect(html).toContain('Экспорт палитры')
+    expect(html).toContain('Действия с палитрой')
+    expect(html).toContain('Палитра заблокирована от изменений')
+    expect(html).toContain('Текущий цвет')
     expect(html).not.toContain('Конфигуратор палитры')
   })
 

@@ -16,7 +16,6 @@ type Props = {
   skinUrl: string | null
   tool: ToolId
   color: string
-  secondaryColor: string
   showGrid: boolean
   showBounds: boolean
   paintEnabled: boolean
@@ -35,7 +34,7 @@ type Props = {
 }
 
 export default function ElytraViewer({
-  pixels, visible, autoRotate, skinUrl, tool, color, secondaryColor, showGrid, showBounds, paintEnabled, crouching,
+  pixels, visible, autoRotate, skinUrl, tool, color, showGrid, showBounds, paintEnabled, crouching,
   onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onNotice, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate,
 }: Props) {
   const { openContextMenu, openContextMenuAt } = useContextMenu()
@@ -51,8 +50,8 @@ export default function ElytraViewer({
   const suppressContextMenuRef = useRef(false)
   const menuOpenedByPressRef = useRef(false)
   const initialSkinAppliedRef = useRef(true)
-  const interactionRef = useRef({ pixels, tool, color, secondaryColor, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate })
-  interactionRef.current = { pixels, tool, color, secondaryColor, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate }
+  const interactionRef = useRef({ pixels, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate })
+  interactionRef.current = { pixels, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate }
 
   useEffect(() => {
     if (!canvasRef.current || !hostRef.current) return
@@ -216,6 +215,9 @@ export default function ElytraViewer({
       viewer.playerObject.elytra.leftWing.rotation.y = 0.30
       viewer.playerObject.elytra.leftWing.rotation.x = 0.2617994
       viewer.playerObject.elytra.updateRightWing()
+      // Lower the whole elytra rig slightly so the crouched wings sit behind
+      // the shoulders instead of clipping into the back of the head.
+      viewer.playerObject.elytra.position.y -= 1.6
       viewer.render()
     } else {
       viewer.animation = null
@@ -310,7 +312,7 @@ export default function ElytraViewer({
           event.stopImmediatePropagation()
           rightDragRef.current = true
           viewer.controls.enabled = false
-          const strokeColor = current.tool === 'eraser' ? transparentPixel : current.secondaryColor
+          const strokeColor = current.tool === 'eraser' ? transparentPixel : current.color
           strokeRef.current = { lastPixel: pendingRight.pixel, color: strokeColor, painting: true }
           current.onStrokeStart()
           current.onPaintLine(pendingRight.pixel[0], pendingRight.pixel[1], pendingRight.pixel[0], pendingRight.pixel[1], strokeColor)
@@ -337,7 +339,7 @@ export default function ElytraViewer({
         rightPressRef.current = null
         if (!menuOpenedByPressRef.current) {
           // Chromium fires `contextmenu` on press. Painting tools defer the menu until
-          // the release proves the right click was stationary instead of a BG stroke.
+          // the release proves the right click was stationary instead of a right-button stroke.
           openContextMenuAt(event.clientX, event.clientY, buildViewerMenu())
           suppressContextMenuRef.current = true
         }
@@ -396,7 +398,7 @@ export default function ElytraViewer({
   return (
     <div className={`viewer-host ${visible ? '' : 'viewer-host-hidden'}`} ref={hostRef}>
       <canvas ref={canvasRef} className={`viewer-canvas ${paintEnabled ? 'viewer-canvas-paint' : ''}`} />
-      <div className="viewer-hint"><span className="live-dot" /> {paintEnabled ? (tool === 'brush' || tool === 'eraser' || tool === 'fill' || tool === 'eyedropper' ? 'Рисование по модели · ЛКМ основной / ПКМ фоновый' : 'Инструмент доступен на 2D-развёртке · модель можно вращать') : '3D предпросмотр · перетаскивай для вращения'}</div>
+      <div className="viewer-hint"><span className="live-dot" /> {paintEnabled ? (tool === 'brush' || tool === 'eraser' || tool === 'fill' || tool === 'eyedropper' ? 'Рисование по модели · ЛКМ / ПКМ — текущий цвет' : 'Инструмент доступен на 2D-развёртке · модель можно вращать') : '3D предпросмотр · перетаскивай для вращения'}</div>
       {crouching && <div className="viewer-pose-label">SHIFT · ПРИСЕД + РАСКРЫТЫЕ ЭЛИТРЫ</div>}
     </div>
   )

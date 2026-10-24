@@ -4,7 +4,7 @@ import {
   Brush, Eraser, PaintBucket, Pipette,
   Eye, Grid2X2, Keyboard, RotateCw, PanelsTopLeft, Box, ChevronDown, ChevronUp,
   FileImage, CircleHelp, Maximize2, Layers3, Sparkles, MousePointer2, ZoomIn, ZoomOut, UserRound,
-  Paintbrush, ScanLine, PersonStanding, ArrowLeftRight,
+  Paintbrush, ScanLine, PersonStanding,
   SquareDashedMousePointer, Slash, Square, Circle, Merge, Plus,
   FlipHorizontal, FlipVertical, RefreshCw, RotateCcw, X,
 } from 'lucide-react'
@@ -114,8 +114,6 @@ function pixelsEqual(a: string[], b: string[]): boolean {
 
 type ProjectSettings = {
   currentColor: string
-  secondaryColor: string
-  activeColorSlot: 'foreground' | 'background'
   tool: ToolId
   viewMode: ViewMode
   showGrid: boolean
@@ -293,8 +291,6 @@ export default function App() {
     writeActiveDocument((document) => ({ ...document, projectPath: value }))
   }, [writeActiveDocument])
   const [currentColor, setCurrentColor] = useState('#4ba3ff')
-  const [secondaryColor, setSecondaryColor] = useState('#ffffff')
-  const [activeColorSlot, setActiveColorSlot] = useState<'foreground' | 'background'>('foreground')
   const [tool, setTool] = useState<ToolId>('brush')
   const previousToolRef = useRef<ToolId>('brush')
   const [viewMode, setViewMode] = useState<ViewMode>('split')
@@ -843,14 +839,8 @@ export default function App() {
     })
   }, [])
   const selectPaletteColor = useCallback((color: string) => {
-    if (activeColorSlot === 'foreground') setCurrentColor(color)
-    else setSecondaryColor(color)
-  }, [activeColorSlot])
-  const swapColors = useCallback(() => {
-    setCurrentColor(secondaryColor)
-    setSecondaryColor(currentColor)
-    setStatus('Основной и фоновый цвета поменяны местами')
-  }, [currentColor, secondaryColor])
+    setCurrentColor(color)
+  }, [])
   const exportPng = useCallback(() => {
     const target = toPngName(filename)
     void (async () => {
@@ -889,7 +879,7 @@ export default function App() {
     })),
     selection,
     settings: {
-      currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv,
+      currentColor, tool, viewMode, showGrid, showUv,
       show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename,
     },
     shortcuts,
@@ -898,7 +888,7 @@ export default function App() {
       savedColors: readLocalJson('mts-saved-colors-v1', []),
       activePalette: localStorage.getItem('mts-active-palette-v1') ?? 'Minecraft · Classic',
     },
-  }), [filename, selection, currentColor, secondaryColor, activeColorSlot, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
+  }), [filename, selection, currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
 
   const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean) => {
     const activeId = activeDocRef.current
@@ -982,8 +972,6 @@ export default function App() {
     activateDocument(doc.id)
 
     if (typeof settings.currentColor === 'string') setCurrentColor(settings.currentColor)
-    if (typeof settings.secondaryColor === 'string') setSecondaryColor(settings.secondaryColor)
-    if (settings.activeColorSlot === 'foreground' || settings.activeColorSlot === 'background') setActiveColorSlot(settings.activeColorSlot)
     const nextTool = toToolId(settings.tool)
     if (nextTool) chooseTool(nextTool)
     if (settings.viewMode === '2d' || settings.viewMode === 'split' || settings.viewMode === '3d') setViewMode(settings.viewMode)
@@ -996,7 +984,7 @@ export default function App() {
     if (typeof settings.autoRotate === 'boolean') setAutoRotate(settings.autoRotate)
 
     if (project.shortcuts && typeof project.shortcuts === 'object') {
-      const nextShortcuts = { ...defaultShortcuts, ...project.shortcuts as Partial<ShortcutMap> }
+      const nextShortcuts = normalizeShortcuts(project.shortcuts as Partial<ShortcutMap>)
       setShortcuts(nextShortcuts)
       localStorage.setItem('mts-shortcuts-v1', JSON.stringify(nextShortcuts))
     }
@@ -1106,7 +1094,6 @@ export default function App() {
         case 'newProject': newProject(); break
         case 'closeProject': closeActiveProject(); break
         case 'export': exportPng(); break
-        case 'swapColors': swapColors(); break
         case 'copy': copySelection(); break
         case 'copyMerged': copyMerged(); break
         case 'cut': cutSelection(); break
@@ -1135,7 +1122,7 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, saveProjectAs, exportPng, swapColors, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
+  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, saveProjectAs, exportPng, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
 
   const handleImportSkin = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1257,7 +1244,6 @@ export default function App() {
     { separator: true },
     ...selectionActions,
     { separator: true },
-    { label: 'Поменять FG / BG', shortcut: shortcuts.swapColors, icon: <ArrowLeftRight size={14} />, action: swapColors },
   ]
   const viewMenu: ContextMenuItem[] = [
     { label: 'Только 2D', checked: viewMode === '2d', action: () => setViewMode('2d') },
@@ -1412,10 +1398,7 @@ export default function App() {
         <aside className="left-sidebar">
           <PalettePanel
             currentColor={currentColor}
-            secondaryColor={secondaryColor}
-            activeColorSlot={activeColorSlot}
             onSelectColor={selectPaletteColor}
-            onSelectSlot={setActiveColorSlot}
             onNotice={setStatus}
           />
           <LayersPanel
@@ -1454,7 +1437,6 @@ export default function App() {
             pixels={displayPixels}
             tool={tool}
             color={currentColor}
-            secondaryColor={secondaryColor}
             zoom={zoom}
             showGrid={showGrid}
             showUv={showUv}
@@ -1506,7 +1488,7 @@ export default function App() {
             <button className={`toolbar-action tiny-action ${autoRotate ? 'toolbar-action-active' : ''}`} onClick={() => setAutoRotate((value) => !value)} title="Автовращение"><RotateCw size={14} /></button>
             <span className="live-label"><span className="live-dot" /> LIVE</span>
           </div></div>
-          <ElytraViewer pixels={displayPixels} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} secondaryColor={secondaryColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
+          <ElytraViewer pixels={displayPixels} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
         </section>
 
         <aside className="right-tools">
@@ -1523,16 +1505,11 @@ export default function App() {
               )
             })}
           </div>
-          <button className="tool-button swap-colors-button" onClick={swapColors} title={`Поменять основной и фоновый цвета (${shortcuts.swapColors})`}><ArrowLeftRight size={17} /><kbd>{shortcuts.swapColors}</kbd></button>
           <button className="tool-button" onClick={resetTexture} title="Новая пустая текстура"><Sparkles size={18} /></button>
           <div className="toolbar-spacer" />
-          <div className="tool-color-stack" title="Основной и фоновый цвета"><button className="foreground-color" style={{ background: currentColor }} onClick={() => setActiveColorSlot('foreground')} onContextMenu={(event) => openContextMenu(event, [
-            { label: 'Использовать как основной цвет', checked: activeColorSlot === 'foreground', action: () => setActiveColorSlot('foreground') },
-            { label: 'Поменять FG / BG', shortcut: shortcuts.swapColors, action: swapColors },
-          ])} aria-label="Выбрать основной цвет" /><button className="background-color" style={{ background: secondaryColor }} onClick={() => setActiveColorSlot('background')} onContextMenu={(event) => openContextMenu(event, [
-            { label: 'Использовать как фоновый цвет', checked: activeColorSlot === 'background', action: () => setActiveColorSlot('background') },
-            { label: 'Поменять FG / BG', shortcut: shortcuts.swapColors, action: swapColors },
-          ])} aria-label="Выбрать фоновый цвет" /></div>
+          <div className="tool-color-stack" title={`Текущий цвет ${currentColor}`}>
+            <span className="foreground-color current-color" style={{ background: currentColor }} aria-label="Текущий цвет" />
+          </div>
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}

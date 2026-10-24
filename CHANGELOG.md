@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.0 — One paint color, palette lock, Aseprite ellipse
+
+- Removed the FG/BG pair entirely. The editor now has a single current color; both mouse buttons paint with it, the `X` swap shortcut is gone, and project settings no longer store a secondary color.
+- Added a palette lock (button next to the palette selector, shortcut `A`) that starts **closed**. While locked, editing the wheel/HEX/RGB/HSV changes only the paint color, never the selected swatch; removing colors and renaming/deleting palettes are blocked.
+- Added a “+” swatch at the end of the palette (and kept “В палитру”) that appends the current color **without unlocking**. The lock now protects existing samples instead of getting in the way of building a palette.
+- Fixed the value-slider bug: moving brightness to 0 no longer loses hue/saturation or sends the wheel marker to the centre; raising brightness restores the color.
+- Decluttered the palette dock: FG/BG and the six-icon palette action row are gone. Palette management now lives in a compact “…” menu; “В палитру / Из палитры” clearly belong to color editing.
+- Fixed palette export: `.gpl` files now go through the native save dialog and Rust file write (browser fallback uses the File System Access API/download).
+- Lowered the crouched elytra rig so the wings sit behind the shoulders instead of clipping into the back of the head.
+- The 2D atlas is centered vertically and horizontally at every zoom level.
+- Replaced the ellipse rasterizer with the Alois Zingl / Aseprite algorithm, including flat symmetric tops and Aseprite-style stepped sides.
+- Duplicate colors are now first-class swatches: only the clicked index is highlighted, editing changes only that entry, cycling moves by index, and stored user palettes keep duplicates across reloads.
+- Tests: 126 (palette lock/read-only swatch behavior, adding colors while locked, duplicate-swatch selection/editing, palette export, value-zero HSV retention, ellipse bounds/shape, plus the previous suite).
+
 ## 0.11.0 — Real `.mts` files, working PNG export and layout-independent keys
 
 - Desktop save/open now use native Windows dialogs (`tauri-plugin-dialog`) and Rust file-write commands instead of anchor downloads. **Сохранить** (`Ctrl+S`) writes to the current `.mts` path or asks for one; **Сохранить как…** (`Ctrl+Shift+S`) always asks. **Открыть проект** uses the native open dialog.

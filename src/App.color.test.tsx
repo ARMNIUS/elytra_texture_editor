@@ -7,7 +7,7 @@ import { ContextMenuProvider } from './components/ContextMenu'
 
 vi.mock('./components/ElytraViewer', () => ({ default: () => <div data-testid="viewer-stub" /> }))
 
-type SavedProject = { settings: { currentColor: string; secondaryColor: string } }
+type SavedProject = { settings: { currentColor: string } }
 
 function renderApp() {
   return render(
@@ -145,5 +145,24 @@ describe('color editor window', () => {
     const dialog = openColorEditor()
     expect(dialog.querySelector('.color-editor-hint')).toBeNull()
     expect(dialog.textContent).not.toContain('Клик по A')
+  })
+
+  it('keeps hue and saturation when the dock value slider reaches zero', () => {
+    renderApp()
+    const wheel = screen.getByLabelText('Цветовой круг HSV')
+    const slider = screen.getByLabelText('Яркость цвета')
+    const before = wheel.getAttribute('aria-valuetext') ?? ''
+    expect(before).toContain('Hue 211')
+    expect(before).toContain('saturation 71%')
+
+    fireEvent.change(slider, { target: { value: '0' } })
+    const dark = wheel.getAttribute('aria-valuetext') ?? ''
+    expect(dark).toContain('Hue 211')
+    expect(dark).toContain('saturation 71%')
+    expect(dark).toContain('value 0%')
+
+    fireEvent.change(slider, { target: { value: '100' } })
+    expect((screen.getByLabelText('HEX текущего цвета') as HTMLInputElement).value).not.toBe('#000000')
+    expect(wheel.getAttribute('aria-valuetext')).toContain('value 100%')
   })
 })

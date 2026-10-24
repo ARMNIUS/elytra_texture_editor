@@ -64,6 +64,22 @@ describe('ellipseOutlinePoints', () => {
     expect(points.every(([, y]) => y === 4)).toBe(true)
     expect(points.length).toBe(5)
   })
+
+  it('stays inside the requested box for many aspect ratios', () => {
+    for (let width = 1; width <= 20; width++) {
+      for (let height = 1; height <= 12; height++) {
+        const points = ellipseOutlinePoints(2, 3, 2 + width - 1, 3 + height - 1)
+        expect(points.length).toBeGreaterThan(0)
+        expect(points.every(([x, y]) => x >= 2 && x <= 1 + width && y >= 3 && y <= 2 + height)).toBe(true)
+      }
+    }
+  })
+
+  it('uses a flat, symmetric top edge for even outlines', () => {
+    const points = ellipseOutlinePoints(0, 0, 10, 10)
+    const top = points.filter(([, y]) => y === 0).map(([x]) => x).sort((a, b) => a - b)
+    expect(top).toEqual([3, 4, 5, 6, 7])
+  })
 })
 
 describe('shapePoints', () => {
