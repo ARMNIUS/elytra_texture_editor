@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for the main editor window. The editor works fully offline and only uses core webview APIs.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
