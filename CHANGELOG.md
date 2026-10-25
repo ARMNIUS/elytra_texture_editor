@@ -1,15 +1,21 @@
 # Changelog
 
-## Unreleased — RawSprite split (`split-sys`)
+## 0.13.0 — RawSprite split: two applications
 
-- Extracted the framework-agnostic raster core into `@rawsprite/core`: colors, layers, shapes, texture operations, transforms, project validation and shortcuts. The app keeps thin compatibility re-exports while the UI is split into two applications.
+- Extracted the framework-agnostic raster core into `@rawsprite/core`: colors, layers, shapes, texture operations, transforms, project validation and shortcuts.
+- Extracted the shared UI into `@rawsprite/editor-ui`: Win9x primitives and XP icons, `TextureCanvas`, `PalettePanel`, `LayersPanel`, `ColorEditorWindow`, `ShortcutsModal`, `NewDocumentDialog`, the file-dialog service and the shared stylesheet.
+- Moved the Minecraft runtime (`ElytraViewer`, UV-grid geometry, default elytra pixels, Steve/elytra assets) into `@rawsprite/plugin-minecraft`.
+- Added `@rawsprite/editor-app`, a shared editor shell that takes a `mode` and an injected preview component. The base app passes no preview; the Minecraft app passes `ElytraViewer`.
+- Created two Tauri applications:
+  - **RawSprite** (`com.rawsprite.editor`, `.rsp`, no three.js/skinview3d);
+  - **RawSprite Minecraft** (`com.rawsprite.minecraft`, `.mts`, live 3D preview).
+- The RawSprite bundle is ~390 KB JS; the Minecraft bundle is ~920 KB.
 - The canvas is no longer fixed at 64×32. Documents carry `width`/`height`, tools and transforms use explicit dimensions, and the **Новый спрайт…** dialog creates transparent canvases from 1×1 to 2048×2048 with size presets.
-- Project format version 3 stores the canvas size; versions 1 and 2 still open as 64×32 documents and migrate on load.
+- Project format version 3 stores the canvas size; versions 1 and 2 still open as 64×32 documents and migrate on load. RawSprite saves `.rsp`, Minecraft saves `.mts`.
 - Undo history is capped by canvas area so 2048×2048 documents do not try to retain 80 full snapshots.
 - The 3D preview is skipped for non-64×32 documents instead of feeding an invalid cape atlas to skinview3d.
-- Extracted the shared UI into `@rawsprite/editor-ui`: Win9x primitives and XP icons, `TextureCanvas`, `PalettePanel`, `LayersPanel`, `ColorEditorWindow`, `ShortcutsModal`, `NewDocumentDialog` and the file-dialog service. Old `src/components/*` and `src/utils/files.ts` paths are thin re-exports; only the Minecraft-specific `ElytraViewer` remains in the app.
-- Moved the Minecraft-specific runtime (`ElytraViewer`, UV-grid geometry, default elytra pixels, Steve/elytra assets) into `@rawsprite/plugin-minecraft`; the app keeps compatibility re-exports.
-- Tests: 131 (core extraction, arbitrary canvas creation/load/save, custom-canvas painting, project v3, plus all previous checks).
+- Both NSIS installers build: `RawSprite_0.1.0_x64-setup.exe` and `RawSprite Minecraft_0.13.0_x64-setup.exe`.
+- Tests: 132 (core extraction, arbitrary canvas creation/load/save, custom-canvas painting, project v3, a Minecraft-free RawSprite smoke render, plus all previous checks).
 
 ## 0.12.0 — One paint color, palette lock, Aseprite ellipse
 

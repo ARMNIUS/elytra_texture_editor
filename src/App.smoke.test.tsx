@@ -14,6 +14,14 @@ function renderApp(): string {
   )
 }
 
+function renderRawSprite(): string {
+  return renderToString(
+    <ContextMenuProvider>
+      <App mode="rawsprite" />
+    </ContextMenuProvider>,
+  )
+}
+
 describe('App shell', () => {
   it('renders the workspace with palette, layers and tools', () => {
     const html = renderApp()
@@ -49,5 +57,15 @@ describe('App shell', () => {
     expect(html).not.toContain('Сохранить проект</span>')
     expect(html).not.toContain('Загрузить скин')
     expect(html).not.toContain('color-editor-window')
+  })
+
+  it('renders a Minecraft-free RawSprite shell', () => {
+    const html = renderRawSprite()
+    expect(html).toContain('Raw')
+    expect(html).toContain('PIXEL ART EDITOR')
+    expect(html).toContain('64 by 64 pixel texture canvas')
+    expect(html).not.toContain('ПРЕДПРОСМОТР')
+    expect(html).not.toContain('3D EDIT')
+    expect(html).not.toContain('Загрузить скин')
   })
 })

@@ -14,7 +14,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "dev:rawsprite": "npm run dev -w @rawsprite/app",
+    "dev:minecraft": "npm run dev -w @rawsprite/app-minecraft",
+    "build:rawsprite": "npm run build -w @rawsprite/app",
+    "build:minecraft": "npm run build -w @rawsprite/app-minecraft",
+    "tauri:rawsprite": "npm run tauri -w @rawsprite/app --",
+    "tauri:minecraft": "npm run tauri -w @rawsprite/app-minecraft --"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

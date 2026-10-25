@@ -5,5 +5,7 @@ dist/
 *.tsbuildinfo
 src-tauri/target/
 src-tauri/gen/
+**/src-tauri/target/
+**/src-tauri/gen/
 .DS_Store
 Thumbs.db

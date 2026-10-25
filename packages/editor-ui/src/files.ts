@@ -30,9 +30,9 @@ export function ensureExtension(path: string, extension: string): string {
   return path.toLowerCase().endsWith(suffix.toLowerCase()) ? path : `${path}${suffix}`
 }
 
-export function toProjectName(name: string): string {
-  const base = name.replace(/\.(png|mts|json)$/i, '').trim()
-  return `${base || 'untitled'}.mts`
+export function toProjectName(name: string, extension = 'mts'): string {
+  const base = name.replace(/\.(png|mts|rsp|json)$/i, '').trim()
+  return `${base || 'untitled'}.${extension}`
 }
 
 export function toPngName(name: string): string {

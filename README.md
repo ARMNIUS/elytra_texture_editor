@@ -1,147 +1,102 @@
-# Minecraft Texture Studio — 0.12.0
+# RawSprite
 
-A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 2D pixel canvas, layers, selection, shape tools, UV guides and a live 3D preview. The interface uses a Windows 95/98 / early Windows XP visual style, with bevelled controls, blue title strips and custom context menus.
+Two desktop pixel editors built from one shared raster core:
 
-## Features in 0.12.0
+- **RawSprite** — a general pixel-art / sprite editor for arbitrary canvas sizes.
+- **RawSprite Minecraft** — the same editor plus the Minecraft texture plugin: skins, elytra, cape, UV guides and a live 3D preview.
 
-- Arbitrary transparent RGBA canvas from 1×1 to **2048×2048** (the **Файл → Новый спрайт…** dialog offers presets and custom width/height). Existing `.mts` projects still default to 64×32.
-- **Multiple projects in tabs**: each tab keeps its own layers, history, selection, zoom and model skin; the clipboard is shared. New (`Ctrl+N`), open, save (`Ctrl+S`), save as (`Ctrl+Shift+S`) and close (`Ctrl+W`) work per tab, and `Ctrl+Tab` cycles them.
-- **Real desktop files**: the `.mts` project is written through a native save dialog and contains the full session (layers, selection, editor settings, skin, palettes and shortcuts). Open uses a native file dialog and saves directly back to the chosen path.
-- **Working PNG export** through a native “save as” dialog (browser fallback uses the File System Access API or a download).
-- New projects start with the bundled `elytra.png` texture and the default `steve.png` skin; clearing the current texture is undoable and never opens a browser dialog.
-- A whole brush or eraser drag undoes in one step, in 2D and in 3D painting.
-- Rectangular selection that clips every drawing operation, plus copy/cut/paste, copy merged, paste into a new layer, clear selection, select all and deselect.
-- Selection transform: drag inside the selection to move its pixels, drag the eight handles to stretch them, and use the header buttons for 90°/180° rotation and horizontal/vertical flips. Every transform is one undo step and Escape cancels it.
-- Line, rectangle and ellipse tools preview the exact pixels in the drawing color before committing. The ellipse uses the Aseprite/Zingl outline algorithm.
-- The 2D canvas stays centered both horizontally and vertically at every zoom level.
-- Layer stack with visibility, reorder, rename, duplicate, merge down, delete and per-layer opacity. The canvas, 3D preview and PNG export all show the flattened composite.
-- PNG import either replaces the active layer or becomes a new layer. The toolbar action is gone; the File/Image menus offer both "Открыть текстуру" and "Импортировать как новый слой".
-- Aseprite-inspired palette dock with a **single current color** (no FG/BG pair): swatches, HSV wheel, brightness slider, HEX/HEXA, color add/delete, palette management in a compact menu, and a **palette lock** (`A` or the padlock button, closed by default) that prevents accidental edits of saved swatches. The “+” swatch and “В палитру” append the current color even while locked. `.gpl` import and native export are supported. There is no separate palette dialog.
-- Floating color editor window (open from the HEX swatch or the sliders button): H/S/V sliders, R/G/B sliders, alpha slider, HEX/HEXA input, A/B comparison and a draggable Win9x title bar. Semi-transparent colors paint and export correctly.
-- Palette import from `.gpl`, `.hex`, `.txt` and `.json`; `.gpl` export; custom palettes and colors persist in local storage.
-- Live `skinview3d` preview with direct 3D painting via UV raycasting, a thin semi-transparent pixel grid and geometry boundaries.
-- Holding `Shift` previews a crouched player with the wider in-game elytra crouch angles instead of the 90-degree flying pose.
-- Dark grey/light-grey transparency checker in the 2D view, so light pixels stay readable.
-- Windows XP icon set used for the brand, File/Edit/Layer menus, undo/redo and confirmation dialogs; the desktop/installer icon is generated from the XP Paint icon.
-- Windows 95/98 and early XP visual language: grey panels, bevelled buttons, blue title bars, compact toolbars and a shared keyboard-navigable context menu system.
-- Context menus on the 2D canvas, 3D preview, palette and swatches, layers, tools, plus menus for File, Edit, View, Image, Layer, Tools, Settings and Help.
-- Separate player-skin import, texture PNG import/export, undo/redo, an unsaved-changes indicator and configurable keyboard shortcuts with conflict detection.
-- Keyboard shortcuts are layout-independent: with a Russian layout `Ctrl+ы` fires save, `B` stays on the physical B key, and shortcut recording stores Latin labels. Rectangle is `U`, the UV overlay is `Ctrl+U`.
-- `.mts` project format version 3 stores the canvas size plus layers, active layer, **selection**, editor settings (including zoom and skin), shortcuts and palettes. Versions 1 and 2 are migrated on open (64×32).
-- Tauri 2 wrapper with app icons and a default capability manifest for desktop packaging.
+The interface uses a Windows 95/98 / early XP visual language: grey panels, bevelled controls, blue title strips and custom context menus.
 
-## Run in a browser first
+## Status — 0.13 split
 
-Install Node.js 20.19+ or 22.12+ and open a terminal in this folder:
+The application layer is now split into separate bundles:
 
-```powershell
+| App | Bundle | Installer |
+|---|---|---|
+| RawSprite | ~390 KB JS | `RawSprite 0.1.0 setup.exe` |
+| RawSprite Minecraft | ~920 KB JS (three.js + skinview3d) | `RawSprite Minecraft 0.13.0 setup.exe` |
+
+RawSprite does not import `three`, `skinview3d` or `ElytraViewer`. The Minecraft app injects `ElytraViewer` as a preview component.
+
+The old root Vite/Tauri shell remains as a compatibility/test harness while the apps are stabilised.
+
+## Shared features
+
+- Arbitrary transparent RGBA canvas from 1×1 to **2048×2048**; the **Файл → Новый спрайт…** dialog offers presets and custom width/height.
+- Brush, eraser, flood fill, eyedropper, line, rectangle and ellipse tools with pixel preview.
+- Rectangular selection, copy/cut/paste, copy merged, paste into a new layer, clear, select all and deselect.
+- Selection move/resize/rotate/flip with a single undo step; Escape cancels.
+- Layer stack with visibility, reorder, rename, duplicate, merge down, delete and per-layer opacity.
+- Undo/redo; a brush stroke is one step. Undo depth scales down for very large canvases.
+- Aseprite-inspired palette dock with a single current color, HSV wheel, brightness slider, HEX/HEXA, palette management, `.gpl` import/export and a palette lock (closed by default, `A` toggles).
+- Floating color editor with HSV/RGB/alpha sliders, numeric fields, 8-digit HEX and A/B comparison.
+- Native Windows save/open dialogs (Tauri) with browser File System Access fallbacks.
+- Projects in tabs, dirty-close confirmation, configurable shortcuts and layout-independent keys (Russian ЙЦУКЕН maps to physical Latin keys).
+- Windows XP icon set, custom context menus and a shared keyboard-navigable UI.
+- Real `.mts` project files: layers, active layer, selection, settings, shortcuts and palettes. Format version 3 stores width/height; versions 1 and 2 migrate as 64×32.
+- RawSprite uses the `.rsp` extension for its projects. The project container is still the same JSON format while the split stabilises.
+
+## Minecraft plugin
+
+`@rawsprite/plugin-minecraft` supplies:
+
+- `ElytraViewer` with a live `skinview3d` player/elytra/cape preview.
+- Direct 3D painting via UV raycasting.
+- Pixel grid and geometry boundary overlays on the model.
+- Shift-preview of the crouched pose with wider elytra angles.
+- Default Steve skin and generated default elytra pixels.
+- UV grid geometry.
+
+Blockbench `.bbmodel` and Bedrock geometry loaders are the next model milestone; the plugin boundary and loader research are in `docs/SPLIT_ARCHITECTURE.md`.
+
+## Repository layout
+
+```text
+apps/
+  rawsprite/              # 2D-only React/Vite/Tauri app
+  rawsprite-minecraft/    # React/Vite/Tauri app with the Minecraft plugin
+packages/
+  core/                   # raster, layers, project validation, color, shapes
+  editor-ui/              # canvas, palette, layers, dialogs, files, styles
+  editor-app/             # shared editor shell with mode/preview injection
+  plugin-api/             # plugin contract v1
+  plugin-minecraft/       # ElytraViewer, UV grid, assets, default elytra
+src/                      # legacy root shell used by the test suite
+docs/                     # architecture and release notes
+```
+
+## Installers
+
+Built locally (unsigned):
+
+```text
+apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.0_x64-setup.exe
+apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.13.0_x64-setup.exe
+```
+
+SmartScreen will warn because the installers are unsigned: choose **«Подробнее» → «Выполнить в любом случае»**.
+
+## Development
+
+Install Node.js 20.19+ or 22.12+ and Rust + MSVC Build Tools for Tauri.
+
+```bash
 npm install
-npm run dev
+
+npm run dev:rawsprite      # http://127.0.0.1:5174
+npm run dev:minecraft      # http://127.0.0.1:5175
+
+npm run build:rawsprite
+npm run build:minecraft
+
+npm run tauri --workspace=@rawsprite/app -- build --bundles nsis
+npm run tauri --workspace=@rawsprite/app-minecraft -- build --bundles nsis
 ```
 
-Open the URL printed by Vite, usually `http://localhost:5173`. On Windows, `RUN-DEV.bat` can install packages and start the dev server.
-
-## Checks
-
-```powershell
-npm run typecheck   # tsc -b, strict
-npm test            # Vitest: utils, project parsing and an App render smoke test
-npm run build       # typecheck + production bundle in dist/
-```
-
-If a sandbox or antivirus blocks esbuild's temporary files, point `TEMP`/`TMP` at a writable folder (for example `.\tmp`; `.tmp/` is git-ignored) before running the build.
-
-## Run as a Windows desktop app
-
-Install Rust and Microsoft C++ Build Tools using the official Tauri prerequisites guide: https://v2.tauri.app/start/prerequisites/
-
-Then run the native development window:
-
-```powershell
-npm install
-npm run tauri dev
-```
-
-To build a Windows NSIS installer (`.exe`), run:
-
-```powershell
-npm run build
-npm run tauri build -- --bundles nsis
-```
-
-The installer is created under `src-tauri\target\release\bundle\nsis\`. Icons live in `src-tauri/icons/`, and the window permissions are declared in `src-tauri/capabilities/default.json`.
-
-A verified local build (Rust 1.99.1, VS Build Tools 2022, Tauri 2.12.5) produced:
-
-```
-src-tauri\target\release\bundle\nsis\Minecraft Texture Studio_0.12.0_x64-setup.exe
-```
-
-The installer is **not code-signed**, so Windows SmartScreen shows a warning: choose «Подробнее» → «Выполнить в любом случае». The raw portable binary is `src-tauri\target\release\minecraft-texture-studio.exe`. The UI is also verified with headless Chromium (tabs, palette, 2D canvas and WebGL preview).
-
-### Build the .exe on GitHub (no local Rust/MSVC needed)
-
-The repository ships `.github/workflows/build-windows.yml`. It runs the checks, builds the NSIS installer on a `windows-latest` runner and uploads it as an artifact. Pushing a `v*` tag also attaches the `.exe` to a draft GitHub release:
-
-```powershell
-git tag v0.10.0
-git push origin v0.10.0
-```
-
-See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release checklist.
-
-## Basic controls
-
-| Action | Key |
-|---|---|
-| Select (marquee) | `M` |
-| Brush / eraser / fill / eyedropper | `B` / `E` / `G` / `I` |
-| Line / rectangle / ellipse | `L` / `U` / `O` |
-| Copy / cut / paste | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` |
-| Copy merged / paste into new layer | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
-| Clear selection / select all / deselect | `Delete` / `Ctrl+A` / `Ctrl+D` |
-| Undo / redo | `Ctrl+Z` / `Ctrl+Y` |
-| Import PNG / open project / save project / save as / export PNG | `Ctrl+O` / `Ctrl+Shift+O` / `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+Shift+E` |
-| New project / close project / cycle tabs | `Ctrl+N` / `Ctrl+W` / `Ctrl+Tab` |
-| Lock / unlock palette editing | `A` |
-| Previous / next palette color | `[` / `]` |
-| UV guide / 2D grid / cycle view | `Ctrl+U` / `H` / `V` |
-| Crouch preview | hold `Shift` |
-| Zoom at pointer | mouse wheel over the canvas |
-
-- All bindings except `[`, `]`, `A` and `Shift` are remappable in Settings → Hotkeys; conflicts are rejected.
-- The clipboard is internal to the editor (per document session), not the system clipboard.
-- With the selection tool, drag inside a marquee to move its pixels, drag a corner/edge handle to stretch them, and use the canvas-header buttons for 90°/180° rotation and flips. Escape cancels a transform in progress; the whole transform is one undo step.
-- The floating color window is opened from the HEX swatch or the sliders button in the palette dock. It offers HSV, RGB and alpha sliders, 8-digit HEX, and an A/B comparison where A restores the color from when the window was opened.
-- 3D: left- and right-drag paint with the current color; a stationary right-click opens the model menu. Selection and shape tools work on the 2D atlas only, so the model stays orbitable.
-- The layer panel is under the palette; double-click a layer name to rename it, right-click for the full layer menu.
-- The top bar contains only the document name; saving, importing, exporting and skin loading live in the File menu (`Ctrl+S` for save).
-
-## Technical stack
-
-- React + TypeScript + Vite
-- `skinview3d` + Three.js for the player model and 3D preview
-- Tauri 2 for the native desktop wrapper
-- `lucide-react` for toolbar and menu icons
-- Vitest for unit and render smoke tests
+`npm run dev`, `npm run build` and `npm test` in the repository root still target the legacy shell.
 
 ## Verification
 
-`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 131 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization including the Aseprite ellipse algorithm, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, in-app dirty-close confirmation, open-as-tab), the bundled default texture, unique shortcut bindings, the old U/UV migration and layout-independent key mapping, `.mts`/PNG file naming, palette locking and read-only swatch behavior, adding colors while locked, duplicate-swatch selection/editing, value-zero HSV retention, native `.gpl` export, arbitrary canvas creation/load/save/painting up to 2048×2048, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
+`npm run typecheck`, `npm test` (**132 checks**) and `npm run build` pass. The suite covers flood fill, layer compositing/merging/reordering, shapes including the Aseprite ellipse, color conversion, project validation and migration, multi-project tabs, shortcut migration/layout independence, palette locking and duplicate swatches, value-zero HSV retention, arbitrary canvas creation/load/save/painting, selection transforms, clipboard layers, a Minecraft-free RawSprite smoke render, and a full server-rendered shell.
 
-Known limitations:
-
-- The canvas is fixed to the 64×32 cape/elytra atlas; document size is not configurable yet.
-- Selection is rectangular only. Transform rotation is limited to 90° steps (plus flips), which keeps pixel art lossless; there is no free-angle rotation or floating-selection resize dialog.
-- Layers have no blend modes or masks; opacity is the only per-layer compositing control.
-- The clipboard is per-session and does not touch the OS clipboard.
-- `app.security.csp` is intentionally `null`; a strict CSP should be added together with a tested desktop build.
-- Wide screens are the target; the workspace has a 950 px minimum width.
-
-## Next increments
-
-1. Non-rectangular selection and a floating move/transform for selections.
-2. Layer blend modes, masks and drag-to-reorder.
-3. Configurable document sizes and more accurate UV guides for model variants.
-4. More 3D pose presets and automated interaction tests.
-
+Native dialogs and Tauri file writes compile; the desktop GUI cannot be launched from the agent shell, so installers should be smoke-tested manually on Windows.

@@ -1,0 +1,19 @@
+{
+  "name": "@rawsprite/app-minecraft",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@rawsprite/editor-app": "*",
+    "@rawsprite/editor-ui": "*",
+    "@rawsprite/plugin-minecraft": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

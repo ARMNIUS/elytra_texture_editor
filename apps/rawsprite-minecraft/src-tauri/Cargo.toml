@@ -1,0 +1,17 @@
+[package]
+name = "rawsprite-minecraft"
+version = "0.13.0"
+description = "RawSprite Minecraft texture editor with 3D preview"
+authors = ["RawSprite contributors"]
+edition = "2021"
+
+[lib]
+name = "rawsprite_minecraft_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
