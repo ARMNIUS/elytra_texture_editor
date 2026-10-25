@@ -525,6 +525,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
   background-color: #8f8f8f !important;
   background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+") !important;
   background-repeat: repeat !important;
+  background-size: 16px 16px !important;
   background-position: 0 0 !important;
   image-rendering: pixelated;
 }
@@ -632,7 +633,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
   border: 2px inset #d4d0c8; background: #fff; color: #111; font: 10px Tahoma, sans-serif;
 }
 .ase-rename-row .small-icon-button { width: 24px; height: 22px; min-height: 22px; }
-.ase-color-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 5px; }
+.ase-color-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 6px 0 4px; }
 .ase-color-actions .subtle-button { min-height: 23px; padding: 0 4px; font-size: 9px; }
 
 /* The tool dock has to survive eight tools on short windows. */

@@ -24,7 +24,7 @@ type Props = {
   selection: SelectionRect | null
   selectionActions: ContextMenuItem[]
   transformRect: SelectionRect | null
-  onTransformStart: () => boolean
+  onTransformStart: (copy?: boolean) => boolean
   onTransformUpdate: (rect: TransformRect) => void
   onTransformCommit: (rect: TransformRect) => void
   onTransformCancel: () => void
@@ -253,7 +253,8 @@ export default function TextureCanvas({
         const handle = hitHandle(candidate, pointerX, pointerY, zoom)
         const inside = pointInside(candidate, pointerX, pointerY, zoom)
         if (handle || inside) {
-          if (!onTransformStart()) return
+          const copy = !handle && inside && (event.ctrlKey || event.metaKey)
+          if (!onTransformStart(copy)) return
           dragRef.current = { kind: 'transform', mode: handle ?? 'move', startRect: candidate, startPixel: [x, y], rect: candidate }
           return
         }
@@ -458,7 +459,7 @@ export default function TextureCanvas({
           style={{
             width: width * zoom,
             height: height * zoom,
-            backgroundSize: `${zoom * 16}px ${zoom * 16}px`,
+            backgroundSize: '16px 16px',
             backgroundPosition: '0 0',
           }}
           title="Колесо мыши — масштабирование"

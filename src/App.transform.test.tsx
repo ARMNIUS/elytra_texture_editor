@@ -179,7 +179,24 @@ describe('selection transform', () => {
 
     drag(canvas, [630, 330], [637, 337])
     expect(selectionLabel(container)).toContain('20×20')
+
     drag(canvas, [637, 337], [645, 345])
     expect(selectionLabel(container)).toContain('20×20')
+  })
+
+  it('copies a selection with Ctrl+drag while keeping the original', async () => {
+    renderApp()
+    const canvas = canvasElement()
+    drag(canvas, [100, 100], [100, 100])
+    fireEvent.click(screen.getByTitle('Выделение (M)'))
+    drag(canvas, [90, 90], [110, 110])
+
+    fireEvent.pointerDown(canvas, { pointerId: 1, button: 0, buttons: 1, ctrlKey: true, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, buttons: 1, ctrlKey: true, clientX: 200, clientY: 200 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, button: 0, ctrlKey: true, clientX: 200, clientY: 200 })
+
+    const project = await saveProject()
+    expect(project.layers[0].pixels[10 * 64 + 10]).toBe(PAINT)
+    expect(project.layers[0].pixels[20 * 64 + 20]).toBe(PAINT)
   })
 })

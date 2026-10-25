@@ -129,6 +129,8 @@ describe('project documents', () => {
     expect(container.textContent).toContain('Проект загружен: sprite-16x8.mts')
     expect((container.querySelector('.pixel-canvas') as HTMLCanvasElement).width).toBe(16)
     expect((container.querySelector('.pixel-canvas') as HTMLCanvasElement).height).toBe(8)
+    expect(container.querySelector('.pixel-grid-overlay')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Сетка пикселей 2D'))
     expect(container.querySelector('.pixel-grid-overlay')?.getAttribute('viewBox')).toBe('0 0 16 8')
   })
 

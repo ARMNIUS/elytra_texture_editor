@@ -360,13 +360,10 @@ export default function PalettePanel({ currentColor, onSelectColor, onNotice }: 
     onNotice?.(`Добавлен цвет ${color.toUpperCase()}`)
   }
 
-  const deleteColor = () => {
-    if (paletteLocked) {
-      onNotice?.('Палитра заблокирована — удаление цвета недоступно')
-      return
-    }
-    if (selectedColorIndex === null) return
-    const index = selectedColorIndex
+  const deleteColorAt = (index: number) => {
+    // Deletion is an explicit context-menu/button action, so it remains available
+    // while the lock protects swatches from accidental color-mixing edits.
+    if (index < 0 || index >= allColors.length) return
     if (isMyColors) {
       setCustomColors((previous) => previous.filter((_, colorIndex) => colorIndex !== index))
     } else {
@@ -376,6 +373,10 @@ export default function PalettePanel({ currentColor, onSelectColor, onNotice }: 
     }
     setSelectedColorIndex(null)
     onNotice?.('Цвет удалён из палитры')
+  }
+
+  const deleteColor = () => {
+    if (selectedColorIndex !== null) deleteColorAt(selectedColorIndex)
   }
 
   const deletePalette = () => {
@@ -525,6 +526,11 @@ export default function PalettePanel({ currentColor, onSelectColor, onNotice }: 
         <button type="button" className="icon-button small-icon-button" onClick={openPaletteMenu} title="Действия с палитрой" aria-label="Действия с палитрой"><MoreHorizontal size={14} /></button>
       </div>
 
+      <div className="ase-color-actions">
+        <button type="button" className="subtle-button" onClick={addColor} title="Добавить текущий цвет в палитру (работает и при закрытом замке)"><Plus size={12} /> В палитру</button>
+        <button type="button" className="subtle-button danger-button" onClick={deleteColor} disabled={selectedColorIndex === null} title="Удалить выбранный цвет из палитры"><Trash2 size={12} /> Из палитры</button>
+      </div>
+
       {renaming && (
         <div className="ase-rename-row">
           <input
@@ -549,6 +555,8 @@ export default function PalettePanel({ currentColor, onSelectColor, onNotice }: 
             { label: 'Выбрать этот цвет', checked: index === selectedColorIndex, action: () => selectColor(swatch, index) },
             { separator: true },
             { label: 'Копировать HEX', icon: <Copy size={13} />, action: () => { if (!navigator.clipboard) { onNotice?.('Буфер обмена недоступен в этом окружении'); return } void navigator.clipboard.writeText(swatch).then(() => onNotice?.(`Скопирован ${swatch.toUpperCase()}`)).catch(() => onNotice?.('Не удалось скопировать цвет')) } },
+            { label: 'Удалить этот цвет', icon: <Trash2 size={13} />, danger: true, action: () => deleteColorAt(index) },
+            { separator: true },
             { label: paletteLocked ? 'Разблокировать палитру' : 'Заблокировать палитру', checked: paletteLocked, action: togglePaletteLock },
           ])} />
         ))}
@@ -605,10 +613,6 @@ export default function PalettePanel({ currentColor, onSelectColor, onNotice }: 
         <button type="button" className="icon-button small-icon-button ase-color-open" onClick={openColorWindow} title="Точная настройка цвета"><SlidersHorizontal size={12} /></button>
       </div>
 
-      <div className="ase-color-actions">
-        <button type="button" className="subtle-button" onClick={addColor} title="Добавить текущий цвет в палитру (работает и при закрытом замке)"><Plus size={12} /> В палитру</button>
-        <button type="button" className="subtle-button danger-button" onClick={deleteColor} disabled={paletteLocked || selectedColorIndex === null} title={paletteLocked ? 'Палитра заблокирована (A)' : 'Удалить выбранный цвет из палитры'}><Trash2 size={12} /> Из палитры</button>
-      </div>
 
       <input ref={paletteInputRef} type="file" accept=".gpl,.hex,.txt,.json,text/plain,application/json" onChange={importPalette} hidden />
       <p className="panel-note">{paletteLocked ? 'Палитра закрыта: образцы защищены, «+» добавляет текущий цвет. A — открыть для правки.' : 'Палитра открыта для правок. A — замочек. [ / ] — предыдущий / следующий цвет.'}</p>

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.14.6 / RawSprite 0.1.4 — Shared editor polish
+
+- **Eyedropper**: picking now reliably writes the sampled color into the current color field and reports it in the status bar; picking a transparent pixel reports that no color changed.
+- Removed the legacy current-color square from the bottom-right toolbar.
+- Moved **«В палитру»** and **«Из палитры»** above the swatch grid, under the palette heading.
+- Added **«Удалить этот цвет»** to the swatch right-click menu; explicit deletion works even while the palette lock protects swatches from accidental recoloring.
+- Grid display is **off by default** in both apps.
+- The transparency checkerboard is fixed at **16×16** and no longer scales with zoom; the same #8f8f8f/#b8b8b8 colors are kept.
+- **Ctrl+drag** on a selection creates a copy while keeping the original.
+- Middle-click autoscroll is suppressed on the editor shell.
+- Alt no longer activates the native window/menu handling.
+- **Ctrl+C / Ctrl+V** copy and paste the selected area (existing shortcuts verified).
+- Tests: 143.
+- Installers: RawSprite 0.1.4, RawSprite Minecraft 0.14.6.
+
 ## 0.14.5 — Unified shader UV grid
 
 - Replaced the per-triangle line geometry for imported models with a single fragment-shader UV grid applied to every model material. It follows the surface at every camera angle, has no seams between faces, and no longer produces doubled lines.

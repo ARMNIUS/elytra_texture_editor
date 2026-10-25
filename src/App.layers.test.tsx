@@ -158,4 +158,13 @@ describe('layers panel integration', () => {
     fireEvent.change(screen.getByLabelText('HEX текущего цвета'), { target: { value: '#00ff00' } })
     expect(screen.getByRole('option', { name: /Minecraft · Classic — копия/ })).toBeTruthy()
   })
+
+  it('deletes a specific swatch from its right-click menu', () => {
+    const { container } = renderApp()
+    const swatches = container.querySelectorAll('.ase-swatch-grid .swatch:not(.swatch-add)')
+    expect(swatches).toHaveLength(24)
+    fireEvent.contextMenu(swatches[0] as HTMLElement)
+    fireEvent.click(screen.getByText('Удалить этот цвет'))
+    expect(container.querySelectorAll('.ase-swatch-grid .swatch:not(.swatch-add)')).toHaveLength(23)
+  })
 })

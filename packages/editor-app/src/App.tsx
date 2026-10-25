@@ -126,6 +126,7 @@ type FloatingTransform = {
   y: number
   width: number
   height: number
+  copy?: boolean
 }
 
 function pixelsEqual(a: string[], b: string[]): boolean {
@@ -325,7 +326,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const [tool, setTool] = useState<ToolId>('brush')
   const previousToolRef = useRef<ToolId>('brush')
   const [viewMode, setViewMode] = useState<ViewMode>(previewAvailable ? 'split' : '2d')
-  const [showGrid, setShowGrid] = useState(true)
+  const [showGrid, setShowGrid] = useState(false)
   const [showUv, setShowUv] = useState(previewAvailable)
   const [show3dGrid, setShow3dGrid] = useState(false)
   const [showFloorGrid, setShowFloorGrid] = useState(false)
@@ -614,7 +615,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
 
   // ----- selection transform ----------------------------------------------
 
-  const beginSelectionTransform = useCallback((): boolean => {
+  const beginSelectionTransform = useCallback((copy = false): boolean => {
     if (!selection) return false
     if (floating) return true
     if (!requireEditableActiveLayer()) return false
@@ -623,14 +624,16 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     const index = layersRef.current.findIndex((layer) => layer.id === activeLayerIdRef.current)
     if (index < 0) return false
     transformSnapshotRef.current = currentSnapshot()
-    const cleared = clearRegion(getActivePixels(), source, width, height)
-    // Apply the cleared layer without touching history: the whole transform becomes
-    // one undo step when it is committed.
-    const next = layersRef.current.map((layer, layerIndex) => layerIndex === index ? { ...layer, pixels: cleared } : layer)
-    layersRef.current = next
-    setLayers(next)
-    setFloating({ block, source, x: source.x0, y: source.y0, width: block.width, height: block.height })
-    setStatus('Трансформация: тяни внутри, тяни за маркеры, поворот — кнопками сверху')
+    if (!copy) {
+      const cleared = clearRegion(getActivePixels(), source, width, height)
+      // Apply the cleared layer without touching history: the whole transform becomes
+      // one undo step when it is committed.
+      const next = layersRef.current.map((layer, layerIndex) => layerIndex === index ? { ...layer, pixels: cleared } : layer)
+      layersRef.current = next
+      setLayers(next)
+    }
+    setFloating({ block, source, x: source.x0, y: source.y0, width: block.width, height: block.height, copy })
+    setStatus(copy ? 'Копия выделения: отпусти мышь, чтобы вставить' : 'Трансформация: тяни внутри, тяни за маркеры, поворот — кнопками сверху')
     return true
   }, [currentSnapshot, floating, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
@@ -1028,7 +1031,12 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const saveProjectAs = useCallback(() => saveProject(true), [saveProject])
 
   const handlePickColor = useCallback((pickedColor: string) => {
-    if (pickedColor !== transparentPixel) selectPaletteColor(pickedColor)
+    if (pickedColor !== transparentPixel) {
+      selectPaletteColor(pickedColor)
+      setStatus(`Цвет взят: ${pickedColor.toUpperCase()}`)
+    } else {
+      setStatus('Прозрачный пиксель — цвет не изменён')
+    }
     setTool((activeTool) => activeTool === 'eyedropper' ? previousToolRef.current : activeTool)
   }, [selectPaletteColor])
 
@@ -1153,6 +1161,18 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       localStorage.setItem('mts-shortcuts-v1', JSON.stringify(next))
       return next
     })
+  }, [])
+
+  useEffect(() => {
+    const blockAlt = (event: KeyboardEvent) => {
+      if (event.key === 'Alt') event.preventDefault()
+    }
+    window.addEventListener('keydown', blockAlt, true)
+    window.addEventListener('keyup', blockAlt, true)
+    return () => {
+      window.removeEventListener('keydown', blockAlt, true)
+      window.removeEventListener('keyup', blockAlt, true)
+    }
   }, [])
 
   useEffect(() => {
@@ -1402,7 +1422,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   }
 
   return (
-    <div className="app-shell" onContextMenu={appContextMenu}>
+    <div className="app-shell" onContextMenu={appContextMenu} onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }} onAuxClick={(event) => { if (event.button === 1) event.preventDefault() }}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
@@ -1615,9 +1635,6 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
           </div>
           <button className="tool-button" onClick={resetTexture} title="Новая пустая текстура"><Sparkles size={18} /></button>
           <div className="toolbar-spacer" />
-          <div className="tool-color-stack" title={`Текущий цвет ${currentColor}`}>
-            <span className="foreground-color current-color" style={{ background: currentColor }} aria-label="Текущий цвет" />
-          </div>
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}
