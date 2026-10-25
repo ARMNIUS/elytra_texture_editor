@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../utils/texture'
+import { pixelIndex } from '../utils/texture'
 import { containsPoint, normalizeRect, shapePoints } from '../utils/shapes'
 import type { SelectionRect, Shape } from '../utils/shapes'
 import type { TransformRect } from '../utils/transform'
@@ -12,6 +12,8 @@ import type { ToolId } from '../App'
 
 type Props = {
   pixels: string[]
+  width: number
+  height: number
   tool: ToolId
   color: string
   zoom: number
@@ -107,7 +109,7 @@ function isShapeTool(tool: ToolId): tool is ShapeTool {
 }
 
 export default function TextureCanvas({
-  pixels, tool, color, zoom, showGrid, showUv, shortcuts, selection, selectionActions,
+  pixels, width, height, tool, color, zoom, showGrid, showUv, shortcuts, selection, selectionActions,
   transformRect, onTransformStart, onTransformUpdate, onTransformCommit, onTransformCancel,
   onZoomChange, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onDrawShape, onSelectionChange, onPick, onCursor, onUndo, onRedo,
   canUndo, canRedo, onToggleGrid, onToggleUv, onZoomReset, onSetTool, onImportTexture, onExportTexture, onClearTexture,
@@ -154,26 +156,26 @@ export default function TextureCanvas({
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if (!canvas || !context) return
-    context.clearRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    for (let y = 0; y < TEXTURE_HEIGHT; y++) {
-      for (let x = 0; x < TEXTURE_WIDTH; x++) {
-        const pixel = pixels[pixelIndex(x, y)]
+    context.clearRect(0, 0, width, height)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const pixel = pixels[pixelIndex(x, y, width)]
         if (pixel && pixel !== transparentPixel && !(pixel.length === 9 && pixel.endsWith('00'))) {
           context.fillStyle = pixel
           context.fillRect(x, y, 1, 1)
         }
       }
     }
-  }, [pixels])
+  }, [pixels, width, height])
 
   const getPixel = useCallback((event: ReactPointerEvent<HTMLCanvasElement>): [number, number] => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const pixelWidth = rect.width / TEXTURE_WIDTH
-    const pixelHeight = rect.height / TEXTURE_HEIGHT
-    const x = Math.min(TEXTURE_WIDTH - 1, Math.max(0, Math.floor((event.clientX - rect.left) / pixelWidth)))
-    const y = Math.min(TEXTURE_HEIGHT - 1, Math.max(0, Math.floor((event.clientY - rect.top) / pixelHeight)))
+    const pixelWidth = rect.width / width
+    const pixelHeight = rect.height / height
+    const x = Math.min(width - 1, Math.max(0, Math.floor((event.clientX - rect.left) / pixelWidth)))
+    const y = Math.min(height - 1, Math.max(0, Math.floor((event.clientY - rect.top) / pixelHeight)))
     return [x, y]
-  }, [])
+  }, [width, height])
 
   const handleWheel = useCallback((event: WheelEvent) => {
     // React registers wheel listeners as passive, so preventDefault() there only
@@ -190,11 +192,11 @@ export default function TextureCanvas({
     zoomAnchor.current = {
       clientX: event.clientX,
       clientY: event.clientY,
-      pixelX: Math.max(0, Math.min(TEXTURE_WIDTH, (event.clientX - rect.left) / zoom)),
-      pixelY: Math.max(0, Math.min(TEXTURE_HEIGHT, (event.clientY - rect.top) / zoom)),
+      pixelX: Math.max(0, Math.min(width, (event.clientX - rect.left) / zoom)),
+      pixelY: Math.max(0, Math.min(height, (event.clientY - rect.top) / zoom)),
     }
     onZoomChange(nextZoom)
-  }, [zoom, onZoomChange])
+  }, [zoom, onZoomChange, width, height])
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -203,7 +205,7 @@ export default function TextureCanvas({
     return () => wrapper.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
 
-  const hoverIndex = hoverPixel ? pixelIndex(hoverPixel[0], hoverPixel[1]) : -1
+  const hoverIndex = hoverPixel ? pixelIndex(hoverPixel[0], hoverPixel[1], width) : -1
   const oldHoverColor = hoverIndex >= 0 ? (pixels[hoverIndex] ?? transparentPixel) : transparentPixel
   const previewColor = tool === 'eraser' || tool === 'eyedropper' ? oldHoverColor : color
   // Painting tools preview the resulting color in the target cell; selection and shape
@@ -321,8 +323,8 @@ export default function TextureCanvas({
       let rect: TransformRect
       if (drag.mode === 'move') {
         rect = {
-          x: Math.max(1 - drag.startRect.width, Math.min(TEXTURE_WIDTH - 1, drag.startRect.x + dx)),
-          y: Math.max(1 - drag.startRect.height, Math.min(TEXTURE_HEIGHT - 1, drag.startRect.y + dy)),
+          x: Math.max(1 - drag.startRect.width, Math.min(width - 1, drag.startRect.x + dx)),
+          y: Math.max(1 - drag.startRect.height, Math.min(height - 1, drag.startRect.y + dy)),
           width: drag.startRect.width,
           height: drag.startRect.height,
         }
@@ -338,8 +340,8 @@ export default function TextureCanvas({
         if (drag.mode.includes('s')) bottom = Math.max(bottom + dy, top + 1)
         left = Math.max(0, left)
         top = Math.max(0, top)
-        right = Math.min(TEXTURE_WIDTH, Math.max(left + 1, right))
-        bottom = Math.min(TEXTURE_HEIGHT, Math.max(top + 1, bottom))
+        right = Math.min(width, Math.max(left + 1, right))
+        bottom = Math.min(height, Math.max(top + 1, bottom))
         rect = { x: left, y: top, width: right - left, height: bottom - top }
       }
       drag.rect = rect
@@ -453,8 +455,8 @@ export default function TextureCanvas({
           ref={wrapperRef}
           className="pixel-canvas-wrap"
           style={{
-            width: TEXTURE_WIDTH * zoom,
-            height: TEXTURE_HEIGHT * zoom,
+            width: width * zoom,
+            height: height * zoom,
             backgroundSize: `${zoom * 16}px ${zoom * 16}px`,
             backgroundPosition: '0 0',
           }}
@@ -463,10 +465,10 @@ export default function TextureCanvas({
         >
           <canvas
             ref={canvasRef}
-            width={TEXTURE_WIDTH}
-            height={TEXTURE_HEIGHT}
+            width={width}
+            height={height}
             className={`pixel-canvas tool-${tool}`}
-            aria-label="64 by 32 pixel texture canvas"
+            aria-label={`${width} by ${height} pixel texture canvas`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -477,12 +479,12 @@ export default function TextureCanvas({
           {showGrid && (
             <svg className="pixel-grid-overlay" viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true">
               <path
-                d={Array.from({ length: TEXTURE_WIDTH + 1 }, (_, x) => `M ${x} 0 V ${TEXTURE_HEIGHT}`).join(' ') + ' ' + Array.from({ length: TEXTURE_HEIGHT + 1 }, (_, y) => `M 0 ${y} H ${TEXTURE_WIDTH}`).join(' ')}
+                d={Array.from({ length: width + 1 }, (_, x) => `M ${x} 0 V ${height}`).join(' ') + ' ' + Array.from({ length: height + 1 }, (_, y) => `M 0 ${y} H ${width}`).join(' ')}
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
           )}
-          {showUv && (
+          {showUv && width === 64 && height === 32 && (
             <svg className="uv-overlay" viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true">
               {uvFaces.map((face, index) => (
                 <g key={face.name + index}>
@@ -561,8 +563,8 @@ export default function TextureCanvas({
         </div>
       </div>
       <div className="canvas-footnote">
-        <span>64 × 32 px</span>
-        <span>UV: 22, 0 → 48, 22</span>
+        <span>{width} × {height} px</span>
+        {width === 64 && height === 32 && <span>UV: 22, 0 → 48, 22</span>}
         <span>Колесо — масштаб · {zoom * 100}%</span>
       </div>
     </div>

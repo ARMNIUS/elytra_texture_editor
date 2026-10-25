@@ -3,7 +3,7 @@ import * as skinview3d from 'skinview3d'
 import { BufferGeometry, EdgesGeometry, LineBasicMaterial, LineSegments, Mesh, Raycaster, Vector2 } from 'three'
 import { Paintbrush, Grid2X2, ScanLine, PersonStanding, RotateCw } from 'lucide-react'
 import { useContextMenu } from './ContextMenu'
-import { createTextureCanvas, pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../utils/texture'
+import { createTextureCanvas, pixelIndex } from '../utils/texture'
 import { makeUvGridGeometry } from '../utils/uvGrid'
 import { transparentPixel } from '../data/palettes'
 import defaultSkinUrl from '../assets/steve.png'
@@ -11,6 +11,8 @@ import type { ToolId } from '../App'
 
 type Props = {
   pixels: string[]
+  width: number
+  height: number
   visible: boolean
   autoRotate: boolean
   skinUrl: string | null
@@ -34,7 +36,7 @@ type Props = {
 }
 
 export default function ElytraViewer({
-  pixels, visible, autoRotate, skinUrl, tool, color, showGrid, showBounds, paintEnabled, crouching,
+  pixels, width, height, visible, autoRotate, skinUrl, tool, color, showGrid, showBounds, paintEnabled, crouching,
   onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onNotice, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate,
 }: Props) {
   const { openContextMenu, openContextMenuAt } = useContextMenu()
@@ -50,8 +52,8 @@ export default function ElytraViewer({
   const suppressContextMenuRef = useRef(false)
   const menuOpenedByPressRef = useRef(false)
   const initialSkinAppliedRef = useRef(true)
-  const interactionRef = useRef({ pixels, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate })
-  interactionRef.current = { pixels, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate }
+  const interactionRef = useRef({ pixels, width, height, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate })
+  interactionRef.current = { pixels, width, height, tool, color, paintEnabled, showGrid, showBounds, crouching, autoRotate, onPaintLine, onFill, onStrokeStart, onStrokeEnd, onPick, onTogglePaint, onToggleGrid, onToggleBounds, onToggleCrouch, onToggleAutoRotate }
 
   useEffect(() => {
     if (!canvasRef.current || !hostRef.current) return
@@ -91,7 +93,7 @@ export default function ElytraViewer({
         color: 0xeaf4ff, transparent: true, opacity: 0.38,
         depthTest: true, depthWrite: false, toneMapped: false,
       })
-      const gridGeometry = makeUvGridGeometry(object.geometry as BufferGeometry)
+      const gridGeometry = makeUvGridGeometry(object.geometry as BufferGeometry, 0.008, width, height)
       const gridLine = new LineSegments(gridGeometry, gridMaterial)
       gridLine.name = 'mts-pixel-grid-lines'
       // The lines are generated in this mesh's local coordinate space, then
@@ -188,11 +190,14 @@ export default function ElytraViewer({
   }, [skinUrl, onNotice])
 
   useEffect(() => {
+    // skinview3d accepts only the 64×32 cape/elytra atlas. Arbitrary RawSprite
+    // documents are 2D-only for now; the Minecraft plugin will own 3D later.
+    if (width !== 64 || height !== 32) return
     const viewer = viewerRef.current
     if (!viewer) return
     // Canvas sources are handled synchronously by skinview3d; no data-URL conversion or delayed races.
-    viewer.loadCape(createTextureCanvas(pixels), { backEquipment: 'elytra' })
-  }, [pixels])
+    viewer.loadCape(createTextureCanvas(pixels, width, height), { backEquipment: 'elytra' })
+  }, [pixels, width, height])
 
   useEffect(() => {
     const viewer = viewerRef.current
@@ -234,6 +239,8 @@ export default function ElytraViewer({
     const pointer = new Vector2()
 
     const hitPixel = (event: PointerEvent): [number, number] | null => {
+      const current = interactionRef.current
+      if (current.width !== 64 || current.height !== 32) return null
       const rect = canvas.getBoundingClientRect()
       if (!rect.width || !rect.height) return null
       pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
@@ -243,8 +250,8 @@ export default function ElytraViewer({
       const uv = hits.find((hit) => hit.uv)?.uv
       if (!uv) return null
       // skinview3d's Minecraft UV helper uses a bottom-left Three.js UV origin and a top-left image origin.
-      const x = Math.min(TEXTURE_WIDTH - 1, Math.max(0, Math.floor(uv.x * TEXTURE_WIDTH)))
-      const y = Math.min(TEXTURE_HEIGHT - 1, Math.max(0, Math.floor((1 - uv.y) * TEXTURE_HEIGHT)))
+      const x = Math.min(current.width - 1, Math.max(0, Math.floor(uv.x * current.width)))
+      const y = Math.min(current.height - 1, Math.max(0, Math.floor((1 - uv.y) * current.height)))
       return [x, y]
     }
 
@@ -287,7 +294,7 @@ export default function ElytraViewer({
       }
 
       if (current.tool === 'eyedropper') {
-        const value = current.pixels[pixelIndex(point[0], point[1])] ?? transparentPixel
+        const value = current.pixels[pixelIndex(point[0], point[1], current.width)] ?? transparentPixel
         current.onPick(value)
         viewer.controls.enabled = true
         return

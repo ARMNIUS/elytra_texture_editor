@@ -115,4 +115,25 @@ describe('selection regions', () => {
     expect(pasted[pixelIndex(TEXTURE_WIDTH - 1, TEXTURE_HEIGHT - 1)]).toBe('#fff000')
     expect(pasted.filter((pixel) => pixel === '#fff000')).toHaveLength(1)
   })
+
+  it('paints and flood-fills a canvas with non-default dimensions', () => {
+    const pixels = Array.from({ length: 4 * 3 }, () => transparentPixel)
+    const painted = paintPoints(pixels, [[3, 2], [4, 2]], '#ff0000', null, 4, 3)
+    expect(painted).toHaveLength(12)
+    expect(painted[pixelIndex(3, 2, 4)]).toBe('#ff0000')
+    expect(painted[pixelIndex(4, 2, 4)]).toBe(undefined)
+
+    const filled = floodFill(pixels, 0, 0, '#00ff00', null, 4, 3)
+    expect(filled.every((pixel) => pixel === '#00ff00')).toBe(true)
+  })
+
+  it('copies and pastes regions using explicit dimensions', () => {
+    const pixels = Array.from({ length: 4 * 2 }, () => transparentPixel)
+    pixels[1 * 4 + 2] = '#abcdef'
+    const region = copyRegion(pixels, { x0: 2, y0: 1, x1: 3, y1: 1 }, 4, 2)
+    expect(region).toEqual({ width: 2, height: 1, pixels: ['#abcdef', transparentPixel] })
+
+    const pasted = pasteRegion(pixels, region!, 0, 0, null, 4, 2)
+    expect(pasted[0]).toBe('#abcdef')
+  })
 })

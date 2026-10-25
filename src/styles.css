@@ -851,3 +851,19 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 }
 .swatch-add:hover { background: #fff !important; outline: 1px solid #0a246a; }
 .swatch-add svg { width: 14px; height: 14px; }
+
+/* ===== 0.13: arbitrary canvas sizes ===== */
+.new-document-body { display: flex; align-items: flex-start; gap: 13px; padding: 16px 16px 8px; }
+.new-document-fields { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.new-document-fields label { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 7px; }
+.new-document-fields input {
+  width: 100%; height: 22px; padding: 2px 5px; color: #111; background: #fff;
+  border: 1px solid; border-color: #404040 #fff #fff #404040; font: 11px Tahoma, sans-serif;
+}
+.new-document-presets { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 0 2px 77px; }
+.new-document-presets button {
+  min-width: 38px; height: 20px; padding: 0 5px; color: #111; background: #d4d0c8;
+  border: 1px solid; border-color: #fff #404040 #404040 #fff; font: 10px Tahoma, sans-serif; cursor: pointer;
+}
+.new-document-presets button.is-active { border-color: #404040 #fff #fff #404040; background: #b8b4aa; }
+.new-document-hint { margin: 0; padding-left: 77px; color: #555; font-size: 10px; }

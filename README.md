@@ -4,7 +4,7 @@ A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 
 
 ## Features in 0.12.0
 
-- 64×32 transparent RGBA texture canvas with brush, eraser, flood fill, eyedropper, zoom and a precise pointer dot plus target-pixel preview.
+- Arbitrary transparent RGBA canvas from 1×1 to **2048×2048** (the **Файл → Новый спрайт…** dialog offers presets and custom width/height). Existing `.mts` projects still default to 64×32.
 - **Multiple projects in tabs**: each tab keeps its own layers, history, selection, zoom and model skin; the clipboard is shared. New (`Ctrl+N`), open, save (`Ctrl+S`), save as (`Ctrl+Shift+S`) and close (`Ctrl+W`) work per tab, and `Ctrl+Tab` cycles them.
 - **Real desktop files**: the `.mts` project is written through a native save dialog and contains the full session (layers, selection, editor settings, skin, palettes and shortcuts). Open uses a native file dialog and saves directly back to the chosen path.
 - **Working PNG export** through a native “save as” dialog (browser fallback uses the File System Access API or a download).
@@ -27,7 +27,7 @@ A work-in-progress pixel-art editor for Minecraft-style elytra textures, with a 
 - Context menus on the 2D canvas, 3D preview, palette and swatches, layers, tools, plus menus for File, Edit, View, Image, Layer, Tools, Settings and Help.
 - Separate player-skin import, texture PNG import/export, undo/redo, an unsaved-changes indicator and configurable keyboard shortcuts with conflict detection.
 - Keyboard shortcuts are layout-independent: with a Russian layout `Ctrl+ы` fires save, `B` stays on the physical B key, and shortcut recording stores Latin labels. Rectangle is `U`, the UV overlay is `Ctrl+U`.
-- `.mts` project format version 2 stores layers, active layer, **selection**, editor settings (including zoom and skin), shortcuts and palettes. Version 1 projects are migrated on open.
+- `.mts` project format version 3 stores the canvas size plus layers, active layer, **selection**, editor settings (including zoom and skin), shortcuts and palettes. Versions 1 and 2 are migrated on open (64×32).
 - Tauri 2 wrapper with app icons and a default capability manifest for desktop packaging.
 
 ## Run in a browser first
@@ -127,7 +127,7 @@ See [docs/RELEASING.md](docs/RELEASING.md) for the full publishing and release c
 
 ## Verification
 
-`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 126 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization including the Aseprite ellipse algorithm, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, in-app dirty-close confirmation, open-as-tab), the bundled default texture, unique shortcut bindings, the old U/UV migration and layout-independent key mapping, `.mts`/PNG file naming, palette locking and read-only swatch behavior, adding colors while locked, duplicate-swatch selection/editing, value-zero HSV retention, native `.gpl` export, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
+`npm run build` and the Vitest suite pass on a machine with dependencies installed. The 131 checks cover the flood fill (including selection bounds), layer compositing/merging/reordering, shape rasterization including the Aseprite ellipse algorithm, color conversion, project-layer validation, project save/load with version 1 migration, multi-project tabs (per-tab pixels/history, in-app dirty-close confirmation, open-as-tab), the bundled default texture, unique shortcut bindings, the old U/UV migration and layout-independent key mapping, `.mts`/PNG file naming, palette locking and read-only swatch behavior, adding colors while locked, duplicate-swatch selection/editing, value-zero HSV retention, native `.gpl` export, arbitrary canvas creation/load/save/painting up to 2048×2048, 3D UV-grid geometry generation, transform math (rotate/flip/scale/blit), the color editor (HSV/RGB/alpha/A-B, 8-digit HEX, alpha-zero round trip), selection move/resize/rotate/flip with single-step undo and Escape cancellation, jsdom interaction tests for the layer panel, selection tool, pointer cursor, stroke-level undo and clipboard layer operations, and a server-rendered mount of the whole editor shell. The Windows installer is built by `.github/workflows/build-windows.yml` (or locally with Rust + MSVC Build Tools).
 
 Known limitations:
 

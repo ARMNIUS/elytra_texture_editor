@@ -14,6 +14,7 @@ import PalettePanel from './components/PalettePanel'
 import LayersPanel from './components/LayersPanel'
 import ShortcutsModal, { defaultShortcuts, normalizeShortcuts } from './components/ShortcutsModal'
 import ConfirmDialog from './components/ConfirmDialog'
+import NewDocumentDialog from './components/NewDocumentDialog'
 import XpIcon from './components/XpIcon'
 import { useContextMenu } from './components/ContextMenu'
 import type { ContextMenuItem } from './components/ContextMenu'
@@ -22,7 +23,6 @@ import { transparentPixel } from './data/palettes'
 import { defaultElytraPixels } from './data/defaultElytra'
 import {
   clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelsToPngBlob, readImageFile,
-  TEXTURE_HEIGHT, TEXTURE_WIDTH,
 } from './utils/texture'
 import type { PixelRegion } from './utils/texture'
 import {
@@ -50,6 +50,8 @@ type Snapshot = { layers: Layer[]; activeLayerId: string }
 type DocumentState = {
   id: string
   filename: string
+  width: number
+  height: number
   dirty: boolean
   layers: Layer[]
   activeLayerId: string
@@ -63,10 +65,14 @@ type DocumentState = {
 }
 
 function createDocument(filename: string, layers?: Layer[], overrides: Partial<DocumentState> = {}): DocumentState {
-  const initialLayers = layers && layers.length > 0 ? layers : [createLayer('Слой 1')]
+  const width = overrides.width ?? 64
+  const height = overrides.height ?? 32
+  const initialLayers = layers && layers.length > 0 ? layers : [createLayer('Слой 1', undefined, width, height)]
   return {
     id: createLayerId(),
     filename,
+    width,
+    height,
     dirty: false,
     layers: initialLayers,
     activeLayerId: initialLayers[initialLayers.length - 1].id,
@@ -82,7 +88,18 @@ function createDocument(filename: string, layers?: Layer[], overrides: Partial<D
 }
 
 function createDefaultDocument(filename: string): DocumentState {
-  return createDocument(filename, [createLayer('Слой 1', [...defaultElytraPixels])])
+  return createDocument(filename, [createLayer('Слой 1', [...defaultElytraPixels], 64, 32)], { width: 64, height: 32 })
+}
+
+function createBlankDocument(filename: string, width: number, height: number): DocumentState {
+  const safeWidth = Math.max(1, Math.min(2048, Math.round(width)))
+  const safeHeight = Math.max(1, Math.min(2048, Math.round(height)))
+  const zoom = Math.max(1, Math.min(16, Math.floor(Math.min(960 / safeWidth, 720 / safeHeight))))
+  return createDocument(
+    filename,
+    [createLayer('Слой 1', undefined, safeWidth, safeHeight)],
+    { width: safeWidth, height: safeHeight, zoom },
+  )
 }
 
 function nextUntitledName(documents: DocumentState[]): string {
@@ -138,8 +155,10 @@ type ProjectLayerData = {
 
 type ProjectFileV2 = {
   format: 'minecraft-texture-studio-project'
-  version: 2
+  version: 3
   filename: string
+  width: number
+  height: number
   activeLayerId: string
   layers: ProjectLayerData[]
   selection?: SelectionRect | null
@@ -160,20 +179,15 @@ function toPngFilename(name: string): string {
   return `${base || 'elytra-texture'}.png`
 }
 
-function readProjectSelection(value: unknown): SelectionRect | null {
+function readProjectSelection(value: unknown, width: number, height: number): SelectionRect | null {
   if (typeof value !== 'object' || value === null) return null
   const rect = value as { x0?: unknown; y0?: unknown; x1?: unknown; y1?: unknown }
   if (![rect.x0, rect.y0, rect.x1, rect.y1].every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate))) return null
-  const x0 = Math.max(0, Math.min(TEXTURE_WIDTH - 1, Math.round(rect.x0 as number)))
-  const y0 = Math.max(0, Math.min(TEXTURE_HEIGHT - 1, Math.round(rect.y0 as number)))
-  const x1 = Math.max(0, Math.min(TEXTURE_WIDTH - 1, Math.round(rect.x1 as number)))
-  const y1 = Math.max(0, Math.min(TEXTURE_HEIGHT - 1, Math.round(rect.y1 as number)))
+  const x0 = Math.max(0, Math.min(width - 1, Math.round(rect.x0 as number)))
+  const y0 = Math.max(0, Math.min(height - 1, Math.round(rect.y0 as number)))
+  const x1 = Math.max(0, Math.min(width - 1, Math.round(rect.x1 as number)))
+  const y1 = Math.max(0, Math.min(height - 1, Math.round(rect.y1 as number)))
   return x1 >= x0 && y1 >= y0 ? { x0, y0, x1, y1 } : null
-}
-
-function isElytraAtlasSize(width: number, height: number): boolean {
-  // The cape/elytra atlas is 64x32; Minecraft still ships 2x and 4x upscales.
-  return width >= 64 && width % 64 === 0 && height * 2 === width
 }
 
 function toToolId(value: unknown): ToolId | null {
@@ -206,6 +220,7 @@ export default function App() {
   const { openContextMenu } = useContextMenu()
   const [documents, setDocuments] = useState<DocumentState[]>(() => [createDefaultDocument('elytra.png')])
   const [activeDocumentId, setActiveDocumentId] = useState(() => documents[0].id)
+  const [newDocumentOpen, setNewDocumentOpen] = useState(false)
   const [pendingClose, setPendingClose] = useState<{ id: string; filename: string } | null>(null)
   const browserProjectHandlesRef = useRef(new Map<string, BrowserFileHandle>())
   const documentsRef = useRef(documents)
@@ -219,7 +234,9 @@ export default function App() {
   const transformSnapshotRef = useRef<Snapshot | null>(null)
 
   const activeDocument = documents.find((document) => document.id === activeDocumentId) ?? documents[0]
-  const { layers, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future, projectPath } = activeDocument
+  const { layers, width, height, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future, projectPath } = activeDocument
+  // Large canvases cannot afford 80 full snapshots; keep undo useful without exhausting memory.
+  const historyLimit = useMemo(() => Math.max(1, Math.min(80, Math.floor(4_000_000 / Math.max(1, width * height)))), [width, height])
 
   const writeActiveDocument = useCallback((updater: (document: DocumentState) => DocumentState) => {
     const current = documentsRef.current
@@ -332,7 +349,7 @@ export default function App() {
   useEffect(() => { activeDocRef.current = activeDocumentId }, [activeDocumentId])
 
   // The canvas, the 3D preview and PNG export all show the flattened stack.
-  const pixels = useMemo(() => compositeLayers(layers), [layers])
+  const pixels = useMemo(() => compositeLayers(layers, width, height), [layers, width, height])
   // While a selection is being moved/resized, the active layer already has the source
   // area cleared; draw the floating pixels on top for a live preview.
   const displayPixels = useMemo(() => {
@@ -340,8 +357,8 @@ export default function App() {
     const scaled = floating.width === floating.block.width && floating.height === floating.block.height
       ? floating.block
       : scaleBlock(floating.block, floating.width, floating.height)
-    return blitBlock(pixels, scaled, floating.x, floating.y)
-  }, [pixels, floating])
+    return blitBlock(pixels, scaled, floating.x, floating.y, width, height)
+  }, [pixels, floating, width, height])
   const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[layers.length - 1]
   const activeLayerIndex = layers.findIndex((layer) => layer.id === activeLayerId)
   const displaySelection: SelectionRect | null = floating
@@ -365,12 +382,14 @@ export default function App() {
   const currentSnapshot = useCallback((): Snapshot => ({ layers: layersRef.current, activeLayerId: activeLayerIdRef.current }), [])
 
   const pushHistory = useCallback(() => {
-    const nextHistory = [...historyRef.current.slice(-79), currentSnapshot()]
+    const nextHistory = historyLimit <= 1
+      ? [currentSnapshot()]
+      : [...historyRef.current.slice(-(historyLimit - 1)), currentSnapshot()]
     historyRef.current = nextHistory
     setHistory(nextHistory)
     futureRef.current = []
     setFuture([])
-  }, [currentSnapshot])
+  }, [currentSnapshot, historyLimit])
 
   const applyLayers = useCallback((next: Layer[], label: string, nextActiveId?: string) => {
     layersRef.current = next
@@ -413,7 +432,7 @@ export default function App() {
       if (strokeActiveRef.current) strokeSnapshotPushedRef.current = true
     }
     applyLayers(current.map((item, itemIndex) => itemIndex === index ? { ...item, pixels: nextPixels } : item), label)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const beginStroke = useCallback(() => {
     strokeActiveRef.current = true
@@ -431,7 +450,7 @@ export default function App() {
     endStroke()
     const previous = list[list.length - 1]
     const nextHistory = list.slice(0, -1)
-    const nextFuture = [currentSnapshot(), ...futureRef.current].slice(0, 80)
+    const nextFuture = [currentSnapshot(), ...futureRef.current].slice(0, historyLimit)
     historyRef.current = nextHistory
     futureRef.current = nextFuture
     setHistory(nextHistory)
@@ -442,14 +461,14 @@ export default function App() {
     setActiveLayerId(previous.activeLayerId)
     setDirty(true)
     setStatus('Действие отменено')
-  }, [currentSnapshot, endStroke])
+  }, [currentSnapshot, endStroke, historyLimit])
 
   const redo = useCallback(() => {
     const list = futureRef.current
     if (!list.length) return
     endStroke()
     const target = list[0]
-    const nextHistory = [...historyRef.current, currentSnapshot()].slice(-80)
+    const nextHistory = [...historyRef.current, currentSnapshot()].slice(-historyLimit)
     const nextFuture = list.slice(1)
     historyRef.current = nextHistory
     futureRef.current = nextFuture
@@ -461,25 +480,25 @@ export default function App() {
     setActiveLayerId(target.activeLayerId)
     setDirty(true)
     setStatus('Действие повторено')
-  }, [currentSnapshot, endStroke])
+  }, [currentSnapshot, endStroke, historyLimit])
 
   // ----- drawing -----------------------------------------------------------
 
   const paint = useCallback((x0: number, y0: number, x1: number, y1: number, color: string) => {
     if (!requireEditableActiveLayer()) return
-    commitLayerPixels(paintPoints(getActivePixels(), linePoints(x0, y0, x1, y1), color, selection), color === transparentPixel ? 'Ластик' : 'Рисование')
-  }, [commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection])
+    commitLayerPixels(paintPoints(getActivePixels(), linePoints(x0, y0, x1, y1), color, selection, width, height), color === transparentPixel ? 'Ластик' : 'Рисование')
+  }, [commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
   const fill = useCallback((x: number, y: number, fillColor = currentColor) => {
     if (!requireEditableActiveLayer()) return
-    commitLayerPixels(floodFill(getActivePixels(), x, y, fillColor, selection), 'Заливка области')
-  }, [commitLayerPixels, currentColor, getActivePixels, requireEditableActiveLayer, selection])
+    commitLayerPixels(floodFill(getActivePixels(), x, y, fillColor, selection, width, height), 'Заливка области')
+  }, [commitLayerPixels, currentColor, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
   const drawShape = useCallback((shape: Shape, shapeColor: string) => {
     if (!requireEditableActiveLayer()) return
     const label = shape.kind === 'line' ? 'Линия' : shape.kind === 'rect' ? 'Прямоугольник' : 'Эллипс'
-    commitLayerPixels(paintPoints(getActivePixels(), shapePoints(shape), shapeColor, selection), label)
-  }, [commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection])
+    commitLayerPixels(paintPoints(getActivePixels(), shapePoints(shape), shapeColor, selection, width, height), label)
+  }, [commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
   const handleSelectionChange = useCallback((next: SelectionRect | null) => {
     setSelection(next)
@@ -488,45 +507,45 @@ export default function App() {
 
   // ----- clipboard ---------------------------------------------------------
 
-  const effectiveSelection = useCallback((): SelectionRect => selection ?? { x0: 0, y0: 0, x1: TEXTURE_WIDTH - 1, y1: TEXTURE_HEIGHT - 1 }, [selection])
+  const effectiveSelection = useCallback((): SelectionRect => selection ?? { x0: 0, y0: 0, x1: width - 1, y1: height - 1 }, [selection, width, height])
 
   const copySelection = useCallback(() => {
-    const region = copyRegion(getActivePixels(), effectiveSelection())
+    const region = copyRegion(getActivePixels(), effectiveSelection(), width, height)
     if (!region) return
     setClipboard(region)
     setStatus(`Скопировано ${region.width}×${region.height}`)
-  }, [effectiveSelection, getActivePixels])
+  }, [effectiveSelection, getActivePixels, width, height])
 
   // Copies what the artist actually sees: the flattened visible stack, not just the
   // active layer. Essential when shading and highlights live on separate layers.
   const copyMerged = useCallback(() => {
-    const region = copyRegion(pixels, effectiveSelection())
+    const region = copyRegion(pixels, effectiveSelection(), width, height)
     if (!region) return
     setClipboard(region)
     setStatus(`Скопировано объединённое ${region.width}×${region.height}`)
-  }, [effectiveSelection, pixels])
+  }, [effectiveSelection, pixels, width, height])
 
   const cutSelection = useCallback(() => {
-    const region = copyRegion(getActivePixels(), effectiveSelection())
+    const region = copyRegion(getActivePixels(), effectiveSelection(), width, height)
     if (!region) return
     setClipboard(region)
     if (!requireEditableActiveLayer()) return
-    commitLayerPixels(clearRegion(getActivePixels(), effectiveSelection()), 'Вырезано в буфер')
-  }, [commitLayerPixels, effectiveSelection, getActivePixels, requireEditableActiveLayer])
+    commitLayerPixels(clearRegion(getActivePixels(), effectiveSelection(), width, height), 'Вырезано в буфер')
+  }, [commitLayerPixels, effectiveSelection, getActivePixels, requireEditableActiveLayer, width, height])
 
   const pasteClipboard = useCallback(() => {
     if (!clipboard) { setStatus('Внутренний буфер пуст'); return }
     if (!requireEditableActiveLayer()) return
     const originX = selection ? selection.x0 : 0
     const originY = selection ? selection.y0 : 0
-    commitLayerPixels(pasteRegion(getActivePixels(), clipboard, originX, originY), 'Вставка из буфера')
+    commitLayerPixels(pasteRegion(getActivePixels(), clipboard, originX, originY, null, width, height), 'Вставка из буфера')
     setSelection({
       x0: originX,
       y0: originY,
-      x1: Math.min(TEXTURE_WIDTH - 1, originX + clipboard.width - 1),
-      y1: Math.min(TEXTURE_HEIGHT - 1, originY + clipboard.height - 1),
+      x1: Math.min(width - 1, originX + clipboard.width - 1),
+      y1: Math.min(height - 1, originY + clipboard.height - 1),
     })
-  }, [clipboard, commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection])
+  }, [clipboard, commitLayerPixels, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
   const pasteClipboardAsNewLayer = useCallback(() => {
     if (!clipboard) { setStatus('Внутренний буфер пуст'); return }
@@ -535,27 +554,27 @@ export default function App() {
     const current = layersRef.current
     const index = current.findIndex((layer) => layer.id === activeLayerIdRef.current)
     pushHistory()
-    const layer = createLayer('Вставка', emptyLayerPixels())
-    layer.pixels = pasteRegion(layer.pixels, clipboard, originX, originY)
+    const layer = createLayer('Вставка', emptyLayerPixels(width, height), width, height)
+    layer.pixels = pasteRegion(layer.pixels, clipboard, originX, originY, null, width, height)
     const insertAt = index < 0 ? current.length : index + 1
     applyLayers([...current.slice(0, insertAt), layer, ...current.slice(insertAt)], 'Вставлено в новый слой', layer.id)
     setSelection({
       x0: originX,
       y0: originY,
-      x1: Math.min(TEXTURE_WIDTH - 1, originX + clipboard.width - 1),
-      y1: Math.min(TEXTURE_HEIGHT - 1, originY + clipboard.height - 1),
+      x1: Math.min(width - 1, originX + clipboard.width - 1),
+      y1: Math.min(height - 1, originY + clipboard.height - 1),
     })
-  }, [applyLayers, clipboard, pushHistory, selection])
+  }, [applyLayers, clipboard, pushHistory, selection, width, height])
 
   const deleteSelection = useCallback(() => {
     if (!requireEditableActiveLayer()) return
-    commitLayerPixels(clearRegion(getActivePixels(), effectiveSelection()), 'Выделение очищено')
-  }, [commitLayerPixels, effectiveSelection, getActivePixels, requireEditableActiveLayer])
+    commitLayerPixels(clearRegion(getActivePixels(), effectiveSelection(), width, height), 'Выделение очищено')
+  }, [commitLayerPixels, effectiveSelection, getActivePixels, requireEditableActiveLayer, width, height])
 
   const selectAll = useCallback(() => {
-    setSelection({ x0: 0, y0: 0, x1: TEXTURE_WIDTH - 1, y1: TEXTURE_HEIGHT - 1 })
+    setSelection({ x0: 0, y0: 0, x1: width - 1, y1: height - 1 })
     setStatus('Выделен весь холст')
-  }, [])
+  }, [width, height])
 
   const deselect = useCallback(() => {
     setSelection(null)
@@ -569,11 +588,11 @@ export default function App() {
     if (floating) return true
     if (!requireEditableActiveLayer()) return false
     const source = selection
-    const block = extractBlock(getActivePixels(), source)
+    const block = extractBlock(getActivePixels(), source, width)
     const index = layersRef.current.findIndex((layer) => layer.id === activeLayerIdRef.current)
     if (index < 0) return false
     transformSnapshotRef.current = currentSnapshot()
-    const cleared = clearRegion(getActivePixels(), source)
+    const cleared = clearRegion(getActivePixels(), source, width, height)
     // Apply the cleared layer without touching history: the whole transform becomes
     // one undo step when it is committed.
     const next = layersRef.current.map((layer, layerIndex) => layerIndex === index ? { ...layer, pixels: cleared } : layer)
@@ -582,7 +601,7 @@ export default function App() {
     setFloating({ block, source, x: source.x0, y: source.y0, width: block.width, height: block.height })
     setStatus('Трансформация: тяни внутри, тяни за маркеры, поворот — кнопками сверху')
     return true
-  }, [currentSnapshot, floating, getActivePixels, requireEditableActiveLayer, selection])
+  }, [currentSnapshot, floating, getActivePixels, requireEditableActiveLayer, selection, width, height])
 
   const updateSelectionTransform = useCallback((rect: TransformRect) => {
     setFloating((current) => current ? { ...current, x: rect.x, y: rect.y, width: rect.width, height: rect.height } : current)
@@ -612,7 +631,7 @@ export default function App() {
     const rect: TransformRect = rectOverride ?? { x: active.x, y: active.y, width: active.width, height: active.height }
     const unscaled = rect.width === active.block.width && rect.height === active.block.height
     const scaled = unscaled ? active.block : scaleBlock(active.block, rect.width, rect.height)
-    const baked = blitBlock(getActivePixels(), scaled, rect.x, rect.y)
+    const baked = blitBlock(getActivePixels(), scaled, rect.x, rect.y, width, height)
     const snapshot = transformSnapshotRef.current
     const snapshotPixels = snapshot?.layers.find((layer) => layer.id === snapshot.activeLayerId)?.pixels
     if (!snapshot || (snapshotPixels && pixelsEqual(baked, snapshotPixels))) {
@@ -621,7 +640,7 @@ export default function App() {
       setStatus(`Выделение ${rect.width}×${rect.height}`)
       return
     }
-    const nextHistory = [...historyRef.current.slice(-79), snapshot]
+    const nextHistory = historyLimit <= 1 ? [snapshot] : [...historyRef.current.slice(-(historyLimit - 1)), snapshot]
     historyRef.current = nextHistory
     setHistory(nextHistory)
     futureRef.current = []
@@ -636,18 +655,18 @@ export default function App() {
     setSelection(blockSelection(scaled, rect.x, rect.y))
     transformSnapshotRef.current = null
     setFloating(null)
-  }, [applyLayers, floating, getActivePixels, restoreTransformSnapshot])
+  }, [applyLayers, floating, getActivePixels, restoreTransformSnapshot, width, height, historyLimit])
 
   const transformSelection = useCallback((kind: TransformKind) => {
     if (!selection) { setStatus('Сначала выдели область'); return }
     if (!requireEditableActiveLayer()) return
     const source = selection
-    const block = extractBlock(getActivePixels(), source)
+    const block = extractBlock(getActivePixels(), source, width)
     const nextBlock = applyTransform(block, kind)
     const x = source.x0 + Math.floor((block.width - nextBlock.width) / 2)
     const y = source.y0 + Math.floor((block.height - nextBlock.height) / 2)
-    const cleared = clearRegion(getActivePixels(), source)
-    const baked = blitBlock(cleared, nextBlock, x, y)
+    const cleared = clearRegion(getActivePixels(), source, width, height)
+    const baked = blitBlock(cleared, nextBlock, x, y, width, height)
     if (pixelsEqual(baked, getActivePixels())) { setStatus('В выделении нет пикселей для трансформации'); return }
     pushHistory()
     const index = layersRef.current.findIndex((layer) => layer.id === activeLayerIdRef.current)
@@ -688,6 +707,18 @@ export default function App() {
     documentsRef.current = next
     setDocuments(next)
     activateDocument(doc.id)
+  }, [activateDocument])
+
+  const newSprite = useCallback((width: number, height: number) => {
+    const doc = createBlankDocument(nextUntitledName(documentsRef.current), width, height)
+    const next = [...documentsRef.current, doc]
+    documentsRef.current = next
+    setDocuments(next)
+    activateDocument(doc.id)
+    setNewDocumentOpen(false)
+    setViewMode('2d')
+    setShowUv(false)
+    setStatus(`Новый холст ${doc.width}×${doc.height}`)
   }, [activateDocument])
 
   const performCloseDocument = useCallback((id: string) => {
@@ -737,10 +768,10 @@ export default function App() {
     const current = layersRef.current
     const index = current.findIndex((layer) => layer.id === activeLayerIdRef.current)
     pushHistory()
-    const layer = createLayer(nextLayerName(current))
+    const layer = createLayer(nextLayerName(current), undefined, width, height)
     const insertAt = index < 0 ? current.length : index + 1
     applyLayers([...current.slice(0, insertAt), layer, ...current.slice(insertAt)], `Создан слой «${layer.name}»`, layer.id)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const duplicateLayer = useCallback((id: string) => {
     const current = layersRef.current
@@ -749,7 +780,7 @@ export default function App() {
     pushHistory()
     const copy = cloneLayer(current[index])
     applyLayers([...current.slice(0, index + 1), copy, ...current.slice(index + 1)], `Дублирован слой «${current[index].name}»`, copy.id)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const deleteLayer = useCallback((id: string) => {
     const current = layersRef.current
@@ -760,7 +791,7 @@ export default function App() {
     const next = current.filter((layer) => layer.id !== id)
     const fallback = next[Math.min(index, next.length - 1)]
     applyLayers(next, 'Слой удалён', id === activeLayerIdRef.current ? fallback.id : activeLayerIdRef.current)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const moveLayerBy = useCallback((id: string, direction: 1 | -1) => {
     const current = layersRef.current
@@ -768,7 +799,7 @@ export default function App() {
     if (next === current) return
     pushHistory()
     applyLayers(next, direction > 0 ? 'Слой поднят' : 'Слой опущен')
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const mergeDown = useCallback((id: string) => {
     const current = layersRef.current
@@ -778,10 +809,10 @@ export default function App() {
     if (!upper.visible) { setStatus(`Слой «${upper.name}» скрыт — включи видимость для объединения`); return }
     pushHistory()
     const lower = current[index - 1]
-    const merged: Layer = { ...lower, pixels: mergeLayerPixels(lower.pixels, upper) }
+    const merged: Layer = { ...lower, pixels: mergeLayerPixels(lower.pixels, upper, width, height) }
     const next = current.map((layer, layerIndex) => layerIndex === index - 1 ? merged : layer).filter((_, layerIndex) => layerIndex !== index)
     applyLayers(next, `Слой «${upper.name}» объединён с «${lower.name}»`, merged.id)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const toggleLayerVisibility = useCallback((id: string) => {
     const current = layersRef.current
@@ -789,7 +820,7 @@ export default function App() {
     if (!layer) return
     pushHistory()
     applyLayers(current.map((item) => item.id === id ? { ...item, visible: !item.visible } : item), layer.visible ? 'Слой скрыт' : 'Слой показан')
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const renameLayer = useCallback((id: string, name: string) => {
     const current = layersRef.current
@@ -797,7 +828,7 @@ export default function App() {
     if (!layer || layer.name === name || !name.trim()) return
     pushHistory()
     applyLayers(current.map((item) => item.id === id ? { ...item, name: name.trim() } : item), 'Слой переименован')
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   const beginOpacityEdit = useCallback(() => { pendingHistoryRef.current = currentSnapshot() }, [currentSnapshot])
   const endOpacityEdit = useCallback(() => { pendingHistoryRef.current = null }, [])
@@ -810,7 +841,7 @@ export default function App() {
     const pending = pendingHistoryRef.current
     if (pending) {
       // One undo step per slider gesture: the snapshot was taken on pointerdown.
-      const nextHistory = [...historyRef.current.slice(-79), pending]
+      const nextHistory = historyLimit <= 1 ? [pending] : [...historyRef.current.slice(-(historyLimit - 1)), pending]
       historyRef.current = nextHistory
       setHistory(nextHistory)
       futureRef.current = []
@@ -820,7 +851,7 @@ export default function App() {
       pushHistory()
     }
     applyLayers(current.map((item) => item.id === id ? { ...item, opacity: clamped } : item), `Прозрачность слоя ${clamped}%`)
-  }, [applyLayers, pushHistory])
+  }, [applyLayers, pushHistory, width, height, historyLimit])
 
   // ----- file input --------------------------------------------------------
 
@@ -845,7 +876,7 @@ export default function App() {
     const target = toPngName(filename)
     void (async () => {
       try {
-        const blob = await pixelsToPngBlob(pixels)
+        const blob = await pixelsToPngBlob(pixels, width, height)
         if (isDesktopRuntime()) {
           const selected = await pickSavePath(target, [{ name: 'PNG image', extensions: ['png'] }], 'Экспорт PNG')
           if (!selected) return
@@ -863,12 +894,14 @@ export default function App() {
         setStatus(`Не удалось экспортировать PNG: ${error instanceof Error ? error.message : 'ошибка'}`)
       }
     })()
-  }, [filename, pixels])
+  }, [filename, pixels, width, height])
 
   const buildProjectFile = useCallback((): ProjectFileV2 => ({
     format: 'minecraft-texture-studio-project',
-    version: 2,
+    version: 3,
     filename,
+    width,
+    height,
     activeLayerId: activeLayerIdRef.current,
     layers: layersRef.current.map((layer) => ({
       id: layer.id,
@@ -888,7 +921,7 @@ export default function App() {
       savedColors: readLocalJson('mts-saved-colors-v1', []),
       activePalette: localStorage.getItem('mts-active-palette-v1') ?? 'Minecraft · Classic',
     },
-  }), [filename, selection, currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
+  }), [filename, width, height, selection, currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
 
   const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean) => {
     const activeId = activeDocRef.current
@@ -944,7 +977,7 @@ export default function App() {
     setTool((activeTool) => activeTool === 'eyedropper' ? previousToolRef.current : activeTool)
   }, [selectPaletteColor])
 
-  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; selection?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string, projectPath: string | null = null) => {
+  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; selection?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string, projectPath: string | null = null, projectWidth = 64, projectHeight = 32) => {
     if (floating) cancelSelectionTransform()
     const settings = project.settings as Partial<ProjectSettings>
     const activeId = nextLayers.some((layer) => layer.id === requestedActiveId) ? requestedActiveId : nextLayers[nextLayers.length - 1].id
@@ -954,8 +987,10 @@ export default function App() {
         ? project.filename
         : fileName.replace(/\.(mts|json)$/i, '.png')
     const doc = createDocument(loadedFilename, nextLayers, {
+      width: projectWidth,
+      height: projectHeight,
       activeLayerId: activeId,
-      selection: readProjectSelection(project.selection),
+      selection: readProjectSelection(project.selection, projectWidth, projectHeight),
       skinUrl: typeof settings.skinUrl === 'string' ? settings.skinUrl : null,
       skinFilename: typeof settings.skinFilename === 'string' ? settings.skinFilename : '',
       zoom: typeof settings.zoom === 'number' && Number.isFinite(settings.zoom)
@@ -1004,21 +1039,28 @@ export default function App() {
       if (typeof parsed !== 'object' || parsed === null) throw new Error('Файл проекта повреждён')
       const project = parsed as Record<string, unknown>
       if (project.format !== 'minecraft-texture-studio-project') throw new Error('Неподдерживаемый формат проекта')
-      if (project.version !== 1 && project.version !== 2) throw new Error('Неподдерживаемая версия проекта')
+      if (project.version !== 1 && project.version !== 2 && project.version !== 3) throw new Error('Неподдерживаемая версия проекта')
       if (typeof project.settings !== 'object' || project.settings === null) throw new Error('В проекте отсутствуют настройки')
+
+      const projectWidth = project.version === 3 && typeof project.width === 'number' && Number.isFinite(project.width)
+        ? Math.max(1, Math.min(2048, Math.round(project.width)))
+        : 64
+      const projectHeight = project.version === 3 && typeof project.height === 'number' && Number.isFinite(project.height)
+        ? Math.max(1, Math.min(2048, Math.round(project.height)))
+        : 32
 
       let nextLayers: Layer[]
       let requestedActiveId = ''
-      if (project.version === 2) {
-        const parsedLayers = parseProjectLayers(project.layers)
-        if (!parsedLayers) throw new Error('В проекте нет корректных слоёв 64×32')
+      if (project.version === 2 || project.version === 3) {
+        const parsedLayers = parseProjectLayers(project.layers, projectWidth, projectHeight)
+        if (!parsedLayers) throw new Error(`В проекте нет корректных слоёв ${projectWidth}×${projectHeight}`)
         nextLayers = parsedLayers
         requestedActiveId = typeof project.activeLayerId === 'string' ? project.activeLayerId : ''
       } else {
-        if (!isPixelArray(project.pixels)) throw new Error('В проекте нет корректной текстуры 64×32')
-        nextLayers = layersFromPixels(project.pixels)
+        if (!isPixelArray(project.pixels, 64 * 32)) throw new Error('В проекте нет корректной текстуры 64×32')
+        nextLayers = layersFromPixels(project.pixels, 'Слой 1', 64, 32)
       }
-      applyProject(nextLayers, requestedActiveId, project, fileName, projectPath)
+      applyProject(nextLayers, requestedActiveId, project, fileName, projectPath, projectWidth, projectHeight)
     } catch (error) {
       console.error(error)
       setStatus(error instanceof Error ? `Ошибка проекта: ${error.message}` : 'Не удалось открыть проект')
@@ -1163,16 +1205,16 @@ export default function App() {
     const asNewLayer = importModeRef.current === 'new'
     importModeRef.current = 'active'
     try {
-      const imported = await readImageFile(file)
-      const sizeNote = isElytraAtlasSize(imported.width, imported.height)
-        ? `${imported.width}×${imported.height}`
-        : `${imported.width}×${imported.height} растянуто до 64×32`
+      const imported = await readImageFile(file, width, height)
+      const sizeNote = imported.width === width && imported.height === height
+        ? `${width}×${height}`
+        : `${imported.width}×${imported.height} растянуто до ${width}×${height}`
       pushHistory()
       if (asNewLayer) {
         const current = layersRef.current
         const index = current.findIndex((layer) => layer.id === activeLayerIdRef.current)
         const layerName = file.name.replace(/\.[^.]+$/, '').trim().slice(0, 40) || 'Импорт'
-        const layer = createLayer(layerName, imported.pixels)
+        const layer = createLayer(layerName, imported.pixels, width, height)
         const insertAt = index < 0 ? current.length : index + 1
         applyLayers([...current.slice(0, insertAt), layer, ...current.slice(insertAt)], `Импортировано в новый слой «${layerName}» (${sizeNote})`, layer.id)
       } else {
@@ -1190,7 +1232,7 @@ export default function App() {
 
   const resetTexture = () => {
     pushHistory()
-    const layer = createLayer('Слой 1')
+    const layer = createLayer('Слой 1', undefined, width, height)
     layersRef.current = [layer]
     activeLayerIdRef.current = layer.id
     setLayers([layer])
@@ -1225,6 +1267,7 @@ export default function App() {
 
   const fileMenu: ContextMenuItem[] = [
     { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <XpIcon name="newfolder" size={14} />, action: newProject },
+    { label: 'Новый спрайт…', icon: <XpIcon name="bitmap" size={14} />, action: () => setNewDocumentOpen(true) },
     { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <XpIcon name="folder" size={14} />, action: openProject },
     { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <XpIcon name="save" size={14} />, action: () => saveProject() },
     { label: 'Сохранить как…', shortcut: shortcuts.saveProjectAs, icon: <XpIcon name="save" size={14} />, action: saveProjectAs },
@@ -1435,6 +1478,8 @@ export default function App() {
           </div></div>
           <TextureCanvas
             pixels={displayPixels}
+            width={width}
+            height={height}
             tool={tool}
             color={currentColor}
             zoom={zoom}
@@ -1488,7 +1533,7 @@ export default function App() {
             <button className={`toolbar-action tiny-action ${autoRotate ? 'toolbar-action-active' : ''}`} onClick={() => setAutoRotate((value) => !value)} title="Автовращение"><RotateCw size={14} /></button>
             <span className="live-label"><span className="live-dot" /> LIVE</span>
           </div></div>
-          <ElytraViewer pixels={displayPixels} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
+          <ElytraViewer pixels={displayPixels} width={width} height={height} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
         </section>
 
         <aside className="right-tools">
@@ -1513,6 +1558,7 @@ export default function App() {
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}
+      <NewDocumentDialog open={newDocumentOpen} onCancel={() => setNewDocumentOpen(false)} onCreate={newSprite} />
       <ConfirmDialog
         open={pendingClose !== null}
         title="Закрытие проекта"

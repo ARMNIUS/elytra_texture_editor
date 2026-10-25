@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — RawSprite split (`split-sys`)
+
+- Extracted the framework-agnostic raster core into `@rawsprite/core`: colors, layers, shapes, texture operations, transforms, project validation and shortcuts. The app keeps thin compatibility re-exports while the UI is split into two applications.
+- The canvas is no longer fixed at 64×32. Documents carry `width`/`height`, tools and transforms use explicit dimensions, and the **Новый спрайт…** dialog creates transparent canvases from 1×1 to 2048×2048 with size presets.
+- Project format version 3 stores the canvas size; versions 1 and 2 still open as 64×32 documents and migrate on load.
+- Undo history is capped by canvas area so 2048×2048 documents do not try to retain 80 full snapshots.
+- The 3D preview is skipped for non-64×32 documents instead of feeding an invalid cape atlas to skinview3d.
+- Tests: 131 (core extraction, arbitrary canvas creation/load/save, custom-canvas painting, project v3, plus all previous checks).
+
 ## 0.12.0 — One paint color, palette lock, Aseprite ellipse
 
 - Removed the FG/BG pair entirely. The editor now has a single current color; both mouse buttons paint with it, the `X` swap shortcut is gone, and project settings no longer store a secondary color.

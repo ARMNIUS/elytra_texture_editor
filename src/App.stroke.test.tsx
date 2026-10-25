@@ -140,4 +140,24 @@ describe('clipboard and layers', () => {
     // The active layer was empty; only a merged copy can bring the painted pixels over.
     expect(paintedCount(pasted!)).toBeGreaterThan(0)
   })
+
+  it('paints the far corner of a custom-sized canvas', async () => {
+    renderApp()
+    fireEvent.click(screen.getByText('Файл'))
+    fireEvent.click(screen.getByText('Новый спрайт…'))
+    fireEvent.change(screen.getByLabelText('Ширина холста'), { target: { value: '16' } })
+    fireEvent.change(screen.getByLabelText('Высота холста'), { target: { value: '8' } })
+    fireEvent.click(screen.getByText('Создать'))
+
+    const canvas = screen.getByLabelText('16 by 8 pixel texture canvas') as HTMLCanvasElement
+    canvas.getBoundingClientRect = vi.fn(() => ({
+      x: 0, y: 0, left: 0, top: 0, right: 160, bottom: 80, width: 160, height: 80, toJSON: () => ({}),
+    })) as unknown as typeof canvas.getBoundingClientRect
+
+    pointer(canvas, 'pointerDown', 150, 70)
+    pointer(canvas, 'pointerUp', 150, 70)
+
+    const project = await saveProject()
+    expect(project.layers[0].pixels[7 * 16 + 15]).not.toBe(TRAIT)
+  })
 })

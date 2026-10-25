@@ -1,0 +1,17 @@
+{
+  "name": "@rawsprite/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./color": "./src/color.ts",
+    "./layers": "./src/layers.ts",
+    "./palettes": "./src/palettes.ts",
+    "./project": "./src/project.ts",
+    "./shapes": "./src/shapes.ts",
+    "./shortcutKey": "./src/shortcutKey.ts",
+    "./texture": "./src/texture.ts",
+    "./transform": "./src/transform.ts"
+  }
+}

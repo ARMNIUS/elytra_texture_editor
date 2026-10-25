@@ -10,7 +10,7 @@ import { TEXTURE_HEIGHT, TEXTURE_WIDTH } from './texture'
  * because the elytra wings are thin double-sided planes: depth testing then reveals
  * the copy facing the camera and hides the one behind the wing.
  */
-export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008): BufferGeometry {
+export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT): BufferGeometry {
   const position = source.getAttribute('position')
   const uv = source.getAttribute('uv')
   if (!position || !uv) return new BufferGeometry()
@@ -21,8 +21,8 @@ export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008
 
   const vertex = (i: number) => ({
     p: new Vector3().fromBufferAttribute(position, i),
-    u: uv.getX(i) * TEXTURE_WIDTH,
-    v: (1 - uv.getY(i)) * TEXTURE_HEIGHT,
+    u: uv.getX(i) * width,
+    v: (1 - uv.getY(i)) * height,
   })
   const addSegment = (a: Vector3, b: Vector3, normal: Vector3) => {
     for (const sign of [1, -1]) {
@@ -65,14 +65,14 @@ export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008
     if (normal.lengthSq() < epsilon) continue
 
     const minU = Math.max(0, Math.ceil(Math.min(...verts.map((item) => item.u)) - epsilon))
-    const maxU = Math.min(TEXTURE_WIDTH, Math.floor(Math.max(...verts.map((item) => item.u)) + epsilon))
+    const maxU = Math.min(width, Math.floor(Math.max(...verts.map((item) => item.u)) + epsilon))
     for (let u = minU; u <= maxU; u++) {
       const segment = intersectIsoLine(verts, 'u', u)
       if (segment && segment[0].distanceToSquared(segment[1]) > 1e-10) addSegment(segment[0], segment[1], normal)
     }
 
     const minV = Math.max(0, Math.ceil(Math.min(...verts.map((item) => item.v)) - epsilon))
-    const maxV = Math.min(TEXTURE_HEIGHT, Math.floor(Math.max(...verts.map((item) => item.v)) + epsilon))
+    const maxV = Math.min(height, Math.floor(Math.max(...verts.map((item) => item.v)) + epsilon))
     for (let v = minV; v <= maxV; v++) {
       const segment = intersectIsoLine(verts, 'v', v)
       if (segment && segment[0].distanceToSquared(segment[1]) > 1e-10) addSegment(segment[0], segment[1], normal)
