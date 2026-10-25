@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { transparentPixel } from '../data/palettes'
-import { compositeLayers, createLayer, emptyLayerPixels, mergeLayerPixels, moveLayer } from './layers'
-import { pixelIndex } from './texture'
+import { transparentPixel } from '@rawsprite/core/palettes'
+import { compositeLayers, createLayer, emptyLayerPixels, mergeLayerPixels, moveLayer } from '@rawsprite/core/layers'
+import { pixelIndex } from '@rawsprite/core/texture'
 
 function layerWithPixel(name: string, x: number, y: number, color: string) {
   const layer = createLayer(name)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, Merge, Plus, Trash2 } from 'lucide-react'
 import { useContextMenu } from './ContextMenu'
-import type { Layer } from '../utils/layers'
+import type { Layer } from '@rawsprite/core/layers'
 
 type Props = {
   /** Bottom-to-top order, exactly as stored in the document. */

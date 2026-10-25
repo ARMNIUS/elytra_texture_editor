@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { ContextMenuProvider } from './components/ContextMenu'
-import { TEXTURE_PIXEL_COUNT } from './utils/layers'
+import { TEXTURE_PIXEL_COUNT } from '@rawsprite/core/layers'
 
 vi.mock('./components/ElytraViewer', () => ({ default: () => <div data-testid="viewer-stub" /> }))
 

@@ -1,5 +1,5 @@
 import { BufferGeometry, Float32BufferAttribute, Vector3 } from 'three'
-import { TEXTURE_HEIGHT, TEXTURE_WIDTH } from './texture'
+import { TEXTURE_HEIGHT, TEXTURE_WIDTH } from '@rawsprite/core/texture'
 
 /**
  * Builds line geometry on a mesh surface from its UV atlas boundaries.

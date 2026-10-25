@@ -19,23 +19,23 @@ import XpIcon from './components/XpIcon'
 import { useContextMenu } from './components/ContextMenu'
 import type { ContextMenuItem } from './components/ContextMenu'
 import type { ShortcutId, ShortcutMap } from './components/ShortcutsModal'
-import { transparentPixel } from './data/palettes'
+import { transparentPixel } from '@rawsprite/core/palettes'
 import { defaultElytraPixels } from './data/defaultElytra'
 import {
   clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelsToPngBlob, readImageFile,
-} from './utils/texture'
-import type { PixelRegion } from './utils/texture'
+} from '@rawsprite/core/texture'
+import type { PixelRegion } from '@rawsprite/core/texture'
 import {
   cloneLayer, compositeLayers, createLayer, createLayerId, emptyLayerPixels, layersFromPixels, mergeLayerPixels,
   moveLayer as moveLayerInStack, nextLayerName,
-} from './utils/layers'
-import type { Layer } from './utils/layers'
-import { isPixelArray, parseProjectLayers } from './utils/project'
-import { applyTransform, blitBlock, blockSelection, extractBlock, scaleBlock } from './utils/transform'
-import type { PixelBlock, TransformKind, TransformRect } from './utils/transform'
-import { linePoints, rectHeight, rectWidth, shapePoints } from './utils/shapes'
-import type { SelectionRect, Shape } from './utils/shapes'
-import { shortcutKey } from './utils/shortcutKey'
+} from '@rawsprite/core/layers'
+import type { Layer } from '@rawsprite/core/layers'
+import { isPixelArray, parseProjectLayers } from '@rawsprite/core/project'
+import { applyTransform, blitBlock, blockSelection, extractBlock, scaleBlock } from '@rawsprite/core/transform'
+import type { PixelBlock, TransformKind, TransformRect } from '@rawsprite/core/transform'
+import { linePoints, rectHeight, rectWidth, shapePoints } from '@rawsprite/core/shapes'
+import type { SelectionRect, Shape } from '@rawsprite/core/shapes'
+import { shortcutKey } from '@rawsprite/core/shortcutKey'
 import {
   basename, ensureExtension, isDesktopRuntime, pickOpenPath, pickSavePath, readTextFile,
   saveBlobInBrowser, toPngName, toProjectName, writeBinaryFile, writeTextFile,

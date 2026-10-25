@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Keyboard } from 'lucide-react'
-import { shortcutKey } from '../utils/shortcutKey'
+import { shortcutKey } from '@rawsprite/core/shortcutKey'
 
 export type ShortcutId =
   | 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'

@@ -4,11 +4,11 @@ import { Check, ChevronLeft, ChevronRight, Copy, Download, Lock, MoreHorizontal,
 import { useContextMenu } from './ContextMenu'
 import ColorEditorWindow from './ColorEditorWindow'
 import ConfirmDialog from './ConfirmDialog'
-import { palettes } from '../data/palettes'
-import type { Palette } from '../data/palettes'
-import { hexToRgb, hsvToRgb, normalizeColor, normalizeRgbaColor, opaqueColor, parseRgba, rgbToHex, rgbToHsv, withAlpha } from '../utils/color'
-import type { HSV } from '../utils/color'
-import { shortcutKey } from '../utils/shortcutKey'
+import { palettes } from '@rawsprite/core/palettes'
+import type { Palette } from '@rawsprite/core/palettes'
+import { hexToRgb, hsvToRgb, normalizeColor, normalizeRgbaColor, opaqueColor, parseRgba, rgbToHex, rgbToHsv, withAlpha } from '@rawsprite/core/color'
+import type { HSV } from '@rawsprite/core/color'
+import { shortcutKey } from '@rawsprite/core/shortcutKey'
 import { basename, ensureExtension, isDesktopRuntime, pickSavePath, saveBlobInBrowser, writeTextFile } from '../utils/files'
 
 type Props = {

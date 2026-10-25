@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { formatRgbaExact, hsvToRgb, normalizeRgbaColor, parseRgba, rgbToHsv, withAlpha } from '../utils/color'
-import type { HSV, RGB } from '../utils/color'
+import { formatRgbaExact, hsvToRgb, normalizeRgbaColor, parseRgba, rgbToHsv, withAlpha } from '@rawsprite/core/color'
+import type { HSV, RGB } from '@rawsprite/core/color'
 
 type Props = {
   color: string

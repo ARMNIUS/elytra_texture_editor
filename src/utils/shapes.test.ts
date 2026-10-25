@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampRect, containsPoint, ellipseOutlinePoints, linePoints, normalizeRect, rectOutlinePoints, shapePoints } from './shapes'
+import { clampRect, containsPoint, ellipseOutlinePoints, linePoints, normalizeRect, rectOutlinePoints, shapePoints } from '@rawsprite/core/shapes'
 
 describe('normalizeRect', () => {
   it('orders corners', () => {

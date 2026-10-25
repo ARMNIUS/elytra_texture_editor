@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shortcutKey } from './utils/shortcutKey'
+import { shortcutKey } from '@rawsprite/core/shortcutKey'
 
 describe('layout-independent shortcut keys', () => {
   it('maps physical keys while a Russian layout is active', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { transparentPixel } from '../data/palettes'
-import { TEXTURE_PIXEL_COUNT } from './layers'
-import { isPixelArray, parseProjectLayers } from './project'
+import { transparentPixel } from '@rawsprite/core/palettes'
+import { TEXTURE_PIXEL_COUNT } from '@rawsprite/core/layers'
+import { isPixelArray, parseProjectLayers } from '@rawsprite/core/project'
 
 function pixels(color = transparentPixel): string[] {
   return Array.from({ length: TEXTURE_PIXEL_COUNT }, () => color)

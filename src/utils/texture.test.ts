@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { transparentPixel } from '../data/palettes'
-import { clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from './texture'
+import { transparentPixel } from '@rawsprite/core/palettes'
+import { clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '@rawsprite/core/texture'
 
 function blankTexture(): string[] {
   return Array.from({ length: TEXTURE_WIDTH * TEXTURE_HEIGHT }, () => transparentPixel)

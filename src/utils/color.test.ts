@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hexToRgb, hsvToRgb, normalizeColor, rgbToHex, rgbToHsv } from './color'
+import { hexToRgb, hsvToRgb, normalizeColor, rgbToHex, rgbToHsv } from '@rawsprite/core/color'
 
 describe('normalizeColor', () => {
   it('expands short hex and lowercases', () => {

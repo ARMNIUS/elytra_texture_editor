@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { transparentPixel } from '../data/palettes'
-import { applyTransform, blitBlock, blockSelection, extractBlock, flipBlock, rotateBlock, scaleBlock } from './transform'
+import { transparentPixel } from '@rawsprite/core/palettes'
+import { applyTransform, blitBlock, blockSelection, extractBlock, flipBlock, rotateBlock, scaleBlock } from '@rawsprite/core/transform'
 
 const A = '#ff0000'
 const B = '#00ff00'
