@@ -13,8 +13,8 @@ The application layer is now split into separate bundles:
 
 | App | Bundle | Installer |
 |---|---|---|
-| RawSprite | ~390 KB JS | `RawSprite 0.1.6 setup.exe` |
-| RawSprite Minecraft | ~1.56 MB JS (Three.js, skinview3d, model loaders) | `RawSprite Minecraft 0.14.8 setup.exe` |
+| RawSprite | ~390 KB JS | `RawSprite 0.1.7 setup.exe` |
+| RawSprite Minecraft | ~1.56 MB JS (Three.js, skinview3d, model loaders) | `RawSprite Minecraft 0.14.9 setup.exe` |
 
 RawSprite does not import `three`, `skinview3d`, the model loaders or `ElytraViewer`. The Minecraft app injects `MinecraftPreview` as a preview component.
 
@@ -74,8 +74,8 @@ docs/                     # architecture and release notes
 Built locally (unsigned):
 
 ```text
-apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.6_x64-setup.exe
-apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.14.8_x64-setup.exe
+apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.7_x64-setup.exe
+apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.14.9_x64-setup.exe
 ```
 
 SmartScreen will warn because the installers are unsigned: choose **«Подробнее» → «Выполнить в любом случае»**.

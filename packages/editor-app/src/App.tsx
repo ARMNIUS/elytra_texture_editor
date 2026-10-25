@@ -8,8 +8,7 @@ import {
   Paintbrush, ScanLine, PersonStanding,
   SquareDashedMousePointer, Slash, Square, Circle, Merge, Plus,
   FlipHorizontal, FlipVertical, RefreshCw, RotateCcw, X,
-  appIconRaw, appIconMinecraft,
-} from '@rawsprite/editor-ui/icons'
+} from 'lucide-react'
 import TextureCanvas from '@rawsprite/editor-ui/TextureCanvas'
 import PalettePanel from '@rawsprite/editor-ui/PalettePanel'
 import LayersPanel from '@rawsprite/editor-ui/LayersPanel'
@@ -1480,7 +1479,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     <div className="app-shell" onContextMenu={appContextMenu} onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }} onAuxClick={(event) => { if (event.button === 1) event.preventDefault() }}>
       <header className="topbar">
         <div className="brand-lockup">
-          <div className="brand-mark"><img className="brand-icon" src={mode === 'rawsprite' ? appIconRaw : appIconMinecraft} width={26} height={26} alt="" /></div>
+          <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
           <div className="brand-text">{mode === 'rawsprite'
             ? <strong>Raw<span>Sprite</span></strong>
             : <strong>Raw<span>Sprite Minecraft</span></strong>}<small>{mode === 'rawsprite' ? 'PIXEL ART EDITOR' : 'PIXEL TEXTURE EDITOR'}</small></div>
@@ -1696,7 +1695,6 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       <WelcomeDialog
         open={welcomeOpen}
         appName={mode === 'rawsprite' ? 'RawSprite' : 'RawSprite Minecraft'}
-        icon={mode === 'rawsprite' ? appIconRaw : appIconMinecraft}
         onCreate={() => { setWelcomeOpen(false); setNewDocumentOpen(true) }}
         onOpen={() => { setWelcomeOpen(false); void openProject() }}
         onImportPng={() => { setWelcomeOpen(false); openFile() }}

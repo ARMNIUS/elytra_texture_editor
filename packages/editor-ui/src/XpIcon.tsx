@@ -1,21 +1,21 @@
 import React from 'react'
-import paint from './assets/w98/w98_paint.ico'
-import application from './assets/w98/w98_paint_file.ico'
-import save from './assets/w98/w98_floppy_drive_3-5.ico'
-import open from './assets/w98/w98_directory_open.ico'
-import newfolder from './assets/w98/w98_directory_closed.ico'
-import folder from './assets/w98/w98_directory_open.ico'
-import copy from './assets/w98/w98_diskettes_copy.ico'
-import cut from './assets/w98/w98_erase_file.ico'
-import paste from './assets/w98/w98_diskettes_copy.ico'
-import remove from './assets/w98/w98_recycle_bin_full.ico'
-import undo from './assets/w98/w98_overlay_refresh.ico'
-import redo from './assets/w98/w98_system_restore.ico'
-import bitmap from './assets/w98/w98_wia_img_a.ico'
-import settings from './assets/w98/w98_gears.ico'
-import palette from './assets/w98/w98_color_profile.ico'
-import alert from './assets/w98/w98_msg_warning.ico'
-import info from './assets/w98/w98_msg_information.ico'
+import paint from './assets/xp/paint.png'
+import application from './assets/xp/application.png'
+import save from './assets/xp/save.png'
+import open from './assets/xp/open.png'
+import newfolder from './assets/xp/newfolder.png'
+import folder from './assets/xp/folder.png'
+import copy from './assets/xp/copy.png'
+import cut from './assets/xp/cut.png'
+import paste from './assets/xp/paste.png'
+import remove from './assets/xp/delete.png'
+import undo from './assets/xp/undo.png'
+import redo from './assets/xp/redo.png'
+import bitmap from './assets/xp/bitmap.png'
+import settings from './assets/xp/settings.png'
+import palette from './assets/xp/palette.png'
+import alert from './assets/xp/alert.png'
+import info from './assets/xp/info.png'
 
 const sources = {
   paint, application, save, open, newfolder, folder, copy, cut, paste,
@@ -30,7 +30,7 @@ type Props = {
   className?: string
 }
 
-/** A Windows 98 icon from the user's icon set, rendered at UI size. */
+/** A Windows XP icon from the user's icon set, rendered at UI size. */
 export default function XpIcon({ name, size = 16, className }: Props) {
   return (
     <img
@@ -39,8 +39,7 @@ export default function XpIcon({ name, size = 16, className }: Props) {
       height={size}
       alt=""
       draggable={false}
-      className={`w98-icon xp-icon${className ? ` ${className}` : ''}`}
-      style={{ imageRendering: 'pixelated', objectFit: 'contain' }}
+      className={`xp-icon${className ? ` ${className}` : ''}`}
     />
   )
 }

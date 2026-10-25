@@ -1,18 +1,18 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, appIconCreate, appIconImport, appIconOpen } from './icons'
+import { X } from 'lucide-react'
+import XpIcon from './XpIcon'
 
 type Props = {
   open: boolean
   appName: string
-  icon: string
   onCreate: () => void
   onOpen: () => void
   onImportPng: () => void
   onClose: () => void
 }
 
-export default function WelcomeDialog({ open, appName, icon, onCreate, onOpen, onImportPng, onClose }: Props) {
+export default function WelcomeDialog({ open, appName, onCreate, onOpen, onImportPng, onClose }: Props) {
   useEffect(() => {
     if (!open) return
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -34,7 +34,7 @@ export default function WelcomeDialog({ open, appName, icon, onCreate, onOpen, o
           <button type="button" className="confirm-close" aria-label="Закрыть приветствие" onClick={onClose}><X size={11} /></button>
         </div>
         <div className="welcome-brand">
-          <img src={icon} width={54} height={54} alt="" className="welcome-app-icon" />
+          <XpIcon name="paint" size={54} className="welcome-app-icon" />
           <div>
             <h1>{appName}</h1>
             <p>Пиксель-арт редактор</p>
@@ -42,15 +42,15 @@ export default function WelcomeDialog({ open, appName, icon, onCreate, onOpen, o
         </div>
         <div className="welcome-actions">
           <button type="button" className="welcome-action" onClick={onCreate}>
-            <img src={appIconCreate} width={34} height={34} alt="" />
+            <XpIcon name="newfolder" size={34} />
             <span><strong>Создать проект</strong><small>Новый холст</small></span>
           </button>
           <button type="button" className="welcome-action" onClick={onOpen}>
-            <img src={appIconOpen} width={34} height={34} alt="" />
+            <XpIcon name="folder" size={34} />
             <span><strong>Открыть проект</strong><small>Продолжить работу</small></span>
           </button>
           <button type="button" className="welcome-action" onClick={onImportPng}>
-            <img src={appIconImport} width={34} height={34} alt="" />
+            <XpIcon name="bitmap" size={34} />
             <span><strong>Импортировать PNG</strong><small>Начать с изображения</small></span>
           </button>
         </div>

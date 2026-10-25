@@ -12,7 +12,6 @@ describe('WelcomeDialog', () => {
       <WelcomeDialog
         open
         appName="RawSprite"
-        icon="app.ico"
         onCreate={onCreate}
         onOpen={onOpen}
         onImportPng={onImportPng}

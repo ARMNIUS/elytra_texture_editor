@@ -8,7 +8,6 @@
     "./ContextMenu": "./src/ContextMenu.tsx",
     "./ConfirmDialog": "./src/ConfirmDialog.tsx",
     "./XpIcon": "./src/XpIcon.tsx",
-    "./icons": "./src/icons.tsx",
     "./NewDocumentDialog": "./src/NewDocumentDialog.tsx",
     "./WelcomeDialog": "./src/WelcomeDialog.tsx",
     "./ShortcutsModal": "./src/ShortcutsModal.tsx",

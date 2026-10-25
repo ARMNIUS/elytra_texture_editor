@@ -1,7 +1,7 @@
 import React from 'react'
 import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from './icons'
+import { X } from 'lucide-react'
 import XpIcon from './XpIcon'
 
 const PRESETS = [16, 32, 64, 128, 256, 512, 1024, 2048]

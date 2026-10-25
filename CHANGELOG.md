@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.9 / RawSprite 0.1.7 — Icon set rollback
+
+- Rolled the UI and native app icons back to the previous Lucide/XP icon set. The Windows 98 icon experiment was reverted.
+- Kept the startup welcome window and the **Сохранить / Не сохранять / Отмена** confirmation for closing a dirty tab or the whole application.
+- Tests: 144.
+- Installers: RawSprite 0.1.7, RawSprite Minecraft 0.14.9.
+
 ## 0.14.8 / RawSprite 0.1.6 — Welcome window, Windows 98 icons, close prompt
 
 - Added a startup welcome window with the app icon/name and three actions: **Создать проект**, **Открыть проект**, **Импортировать PNG**.
