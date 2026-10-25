@@ -163,7 +163,7 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
     const lines: LineSegments[] = []
     model.object3D.traverse((child) => {
       if (!(child instanceof Mesh)) return
-      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.008, model.textureWidth, model.textureHeight)
+      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.004, model.textureWidth, model.textureHeight, false)
       if (!geometry.getAttribute('position')?.count) {
         geometry.dispose()
         return

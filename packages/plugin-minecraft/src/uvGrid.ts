@@ -10,7 +10,13 @@ import { TEXTURE_HEIGHT, TEXTURE_WIDTH } from '@rawsprite/core/texture'
  * because the elytra wings are thin double-sided planes: depth testing then reveals
  * the copy facing the camera and hides the one behind the wing.
  */
-export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008, width = TEXTURE_WIDTH, height = TEXTURE_HEIGHT): BufferGeometry {
+export function makeUvGridGeometry(
+  source: BufferGeometry,
+  surfaceOffset = 0.008,
+  width = TEXTURE_WIDTH,
+  height = TEXTURE_HEIGHT,
+  bothSides = true,
+): BufferGeometry {
   const position = source.getAttribute('position')
   const uv = source.getAttribute('uv')
   if (!position || !uv) return new BufferGeometry()
@@ -37,7 +43,7 @@ export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008
     v: normalizedUv ? (1 - uv.getY(i)) * vScale : uv.getY(i),
   })
   const addSegment = (a: Vector3, b: Vector3, normal: Vector3) => {
-    for (const sign of [1, -1]) {
+    for (const sign of bothSides ? [1, -1] : [1]) {
       const pa = a.clone().addScaledVector(normal, surfaceOffset * sign)
       const pb = b.clone().addScaledVector(normal, surfaceOffset * sign)
       out.push(pa.x, pa.y, pa.z, pb.x, pb.y, pb.z)

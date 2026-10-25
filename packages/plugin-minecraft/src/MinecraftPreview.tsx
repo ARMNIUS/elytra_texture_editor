@@ -6,7 +6,7 @@ import ModelPreview from './ModelPreview'
 import { loadModelFromText } from './modelLoader'
 import type { LoadedModel } from './modelLoader'
 
-type Props = ComponentProps<typeof ElytraViewer> & { showFloorGrid?: boolean }
+type Props = ComponentProps<typeof ElytraViewer> & { showFloorGrid?: boolean; onResizeCanvas?: (width: number, height: number) => void }
 
 export default function MinecraftPreview(props: Props) {
   const [model, setModel] = useState<LoadedModel | null>(null)
@@ -24,6 +24,7 @@ export default function MinecraftPreview(props: Props) {
         previous?.dispose()
         return loaded
       })
+      props.onResizeCanvas?.(loaded.textureWidth, loaded.textureHeight)
       props.onNotice?.(`Модель загружена: ${loaded.name}`)
     } catch (error) {
       console.error(error)

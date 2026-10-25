@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.4 — Model texture sizing and one-sided UV grid
+
+- `.bbmodel` embedded textures are preserved instead of being replaced by the current canvas, fixing stretched model textures. Models without an embedded texture (and Bedrock models) still use the canvas.
+- UV grids use the model's real texture resolution and detect raw pixel UVs, preventing double-scaled/duplicated grid lines.
+- The imported-model grid is now one-sided; closed models no longer show two offset copies of the same grid.
+- Importing a model now resizes the canvas to the model texture dimensions (`resolution` for BBModel, `texture_width/height` for Bedrock). Existing layers are placed at native resolution and the resize is undoable.
+- Canvas dimensions are part of undo/redo snapshots.
+- Coordinate floor grid cells are exactly one model pixel.
+- Tests: 140.
+- Installers: RawSprite 0.1.3, RawSprite Minecraft 0.14.4.
+
 ## 0.14.3 — Correct model textures and pixel grid
 
 - `.bbmodel` files with an embedded texture now keep that texture instead of being overwritten by the current canvas. This fixes the stretched/squashed model textures.

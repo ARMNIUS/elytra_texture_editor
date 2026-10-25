@@ -51,7 +51,7 @@ type AppMode = 'rawsprite' | 'minecraft'
 type PreviewComponent = ComponentType<any>
 type AppProps = { mode?: AppMode; previewComponent?: PreviewComponent | null }
 
-type Snapshot = { layers: Layer[]; activeLayerId: string }
+type Snapshot = { layers: Layer[]; activeLayerId: string; width: number; height: number }
 
 type DocumentState = {
   id: string
@@ -239,6 +239,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const activeDocRef = useRef(activeDocumentId)
   const layersRef = useRef(documents[0].layers)
   const activeLayerIdRef = useRef(documents[0].activeLayerId)
+  const widthRef = useRef(documents[0].width)
+  const heightRef = useRef(documents[0].height)
   const historyRef = useRef<Snapshot[]>(documents[0].history)
   const futureRef = useRef<Snapshot[]>(documents[0].future)
   const [clipboard, setClipboard] = useState<PixelRegion | null>(null)
@@ -362,6 +364,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
 
   useEffect(() => { layersRef.current = layers }, [layers])
   useEffect(() => { activeLayerIdRef.current = activeLayerId }, [activeLayerId])
+  useEffect(() => { widthRef.current = width; heightRef.current = height }, [width, height])
   useEffect(() => { documentsRef.current = documents }, [documents])
   useEffect(() => { activeDocRef.current = activeDocumentId }, [activeDocumentId])
 
@@ -398,7 +401,12 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [documents])
 
-  const currentSnapshot = useCallback((): Snapshot => ({ layers: layersRef.current, activeLayerId: activeLayerIdRef.current }), [])
+  const currentSnapshot = useCallback((): Snapshot => ({
+    layers: layersRef.current,
+    activeLayerId: activeLayerIdRef.current,
+    width: widthRef.current,
+    height: heightRef.current,
+  }), [])
 
   const pushHistory = useCallback(() => {
     const nextHistory = historyLimit <= 1
@@ -478,9 +486,10 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     activeLayerIdRef.current = previous.activeLayerId
     setLayers(previous.layers)
     setActiveLayerId(previous.activeLayerId)
+    writeActiveDocument((document) => ({ ...document, width: previous.width, height: previous.height }))
     setDirty(true)
     setStatus('Действие отменено')
-  }, [currentSnapshot, endStroke, historyLimit])
+  }, [currentSnapshot, endStroke, historyLimit, writeActiveDocument])
 
   const redo = useCallback(() => {
     const list = futureRef.current
@@ -495,11 +504,14 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setFuture(nextFuture)
     layersRef.current = target.layers
     activeLayerIdRef.current = target.activeLayerId
+    widthRef.current = target.width
+    heightRef.current = target.height
     setLayers(target.layers)
     setActiveLayerId(target.activeLayerId)
+    writeActiveDocument((document) => ({ ...document, width: target.width, height: target.height }))
     setDirty(true)
     setStatus('Действие повторено')
-  }, [currentSnapshot, endStroke, historyLimit])
+  }, [currentSnapshot, endStroke, historyLimit, writeActiveDocument])
 
   // ----- drawing -----------------------------------------------------------
 
@@ -634,15 +646,41 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       setLayers(snapshot.layers)
       activeLayerIdRef.current = snapshot.activeLayerId
       setActiveLayerId(snapshot.activeLayerId)
+      writeActiveDocument((document) => ({ ...document, width: snapshot.width, height: snapshot.height }))
     }
     transformSnapshotRef.current = null
     setFloating(null)
-  }, [])
+  }, [writeActiveDocument])
 
   const cancelSelectionTransform = useCallback(() => {
     restoreTransformSnapshot()
     setStatus('Трансформация отменена')
   }, [restoreTransformSnapshot])
+
+  const resizeCanvasForModel = useCallback((nextWidth: number, nextHeight: number) => {
+    const safeWidth = Math.max(1, Math.min(2048, Math.round(nextWidth)))
+    const safeHeight = Math.max(1, Math.min(2048, Math.round(nextHeight)))
+    if (safeWidth === width && safeHeight === height) return
+    if (floating) cancelSelectionTransform()
+    pushHistory()
+    const nextLayers = layersRef.current.map((layer) => ({
+      ...layer,
+      pixels: placePixels(layer.pixels, width, height, safeWidth, safeHeight),
+    }))
+    layersRef.current = nextLayers
+    widthRef.current = safeWidth
+    heightRef.current = safeHeight
+    writeActiveDocument((document) => ({
+      ...document,
+      width: safeWidth,
+      height: safeHeight,
+      layers: nextLayers,
+      selection: null,
+      zoom: Math.max(0.05, Math.min(16, Math.min(960 / safeWidth, 720 / safeHeight))),
+    }))
+    setDirty(true)
+    setStatus(`Холст подстроен под модель: ${safeWidth}×${safeHeight}`)
+  }, [cancelSelectionTransform, floating, height, pushHistory, width, writeActiveDocument])
 
   const commitSelectionTransform = useCallback((rectOverride?: TransformRect) => {
     const active = floating
@@ -714,6 +752,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setActiveDocumentId(id)
     layersRef.current = target.layers
     activeLayerIdRef.current = target.activeLayerId
+    widthRef.current = target.width
+    heightRef.current = target.height
     historyRef.current = target.history
     futureRef.current = target.future
     setFloating(null)
@@ -1555,7 +1595,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
             <button className={`toolbar-action tiny-action ${autoRotate ? 'toolbar-action-active' : ''}`} onClick={() => setAutoRotate((value) => !value)} title="Автовращение"><RotateCw size={14} /></button>
             <span className="live-label"><span className="live-dot" /> LIVE</span>
           </div></div>
-          <Preview pixels={displayPixels} width={width} height={height} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} showFloorGrid={showFloorGrid} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
+          <Preview pixels={displayPixels} width={width} height={height} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} showFloorGrid={showFloorGrid} onResizeCanvas={resizeCanvasForModel} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
         </section>
         )}
 
