@@ -8,6 +8,13 @@
     "./ContextMenu": "./src/ContextMenu.tsx",
     "./ConfirmDialog": "./src/ConfirmDialog.tsx",
     "./XpIcon": "./src/XpIcon.tsx",
-    "./NewDocumentDialog": "./src/NewDocumentDialog.tsx"
+    "./NewDocumentDialog": "./src/NewDocumentDialog.tsx",
+    "./ShortcutsModal": "./src/ShortcutsModal.tsx",
+    "./LayersPanel": "./src/LayersPanel.tsx",
+    "./ColorEditorWindow": "./src/ColorEditorWindow.tsx",
+    "./TextureCanvas": "./src/TextureCanvas.tsx",
+    "./types": "./src/types.ts",
+    "./PalettePanel": "./src/PalettePanel.tsx",
+    "./files": "./src/files.ts"
   }
 }

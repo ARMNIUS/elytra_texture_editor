@@ -7,7 +7,7 @@ import { createTextureCanvas, pixelIndex } from '@rawsprite/core/texture'
 import { makeUvGridGeometry } from '../utils/uvGrid'
 import { transparentPixel } from '@rawsprite/core/palettes'
 import defaultSkinUrl from '../assets/steve.png'
-import type { ToolId } from '../App'
+import type { ToolId } from '@rawsprite/editor-ui/types'
 
 type Props = {
   pixels: string[]

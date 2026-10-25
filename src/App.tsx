@@ -42,7 +42,8 @@ import {
 } from './utils/files'
 import type { BrowserFileHandle } from './utils/files'
 
-export type ToolId = 'select' | 'brush' | 'eraser' | 'fill' | 'eyedropper' | 'line' | 'rect' | 'ellipse'
+import type { ToolId } from '@rawsprite/editor-ui/types'
+export type { ToolId } from '@rawsprite/editor-ui/types'
 type ViewMode = '2d' | 'split' | '3d'
 
 type Snapshot = { layers: Layer[]; activeLayerId: string }
