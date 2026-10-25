@@ -867,3 +867,17 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
 }
 .new-document-presets button.is-active { border-color: #404040 #fff #fff #404040; background: #b8b4aa; }
 .new-document-hint { margin: 0; padding-left: 77px; color: #555; font-size: 10px; }
+
+
+/* ===== 0.14.1: prevent accidental text selection in the editor chrome ===== */
+.app-shell,
+.app-shell *:not(input):not(textarea):not([contenteditable="true"]) {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.app-shell input,
+.app-shell textarea,
+.app-shell [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}

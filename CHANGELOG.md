@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.1 — Cleaner chrome and model overlays
+
+- Removed the duplicate project-name field from the header in both apps; the active tab is now the single visible project name.
+- Disabled text selection across the editor chrome (`user-select: none`); inputs, textareas and contenteditable fields remain selectable. This also prevents a selected status bar from blocking OrbitControls rotation.
+- **Сетка** and **Границы** now work for imported `.bbmodel` and Bedrock models: a GridHelper is drawn at the model base and a Box3Helper around the model bounds. The helpers update when the model changes and are disposed with the preview.
+- The Minecraft app uses the RawSprite Minecraft title/brand consistently.
+- Tests: 139.
+- Installers: RawSprite 0.1.3, RawSprite Minecraft 0.14.1.
+
 ## 0.14.0 — Model imports (Blockbench + Bedrock)
 
 - Upgraded Three.js to 0.186.1 and added the existing MIT loaders `three-blockbench` and `@bedrock-viewer/model-viewer`.

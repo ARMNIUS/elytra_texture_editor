@@ -1369,11 +1369,6 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
             ? <strong>Raw<span>Sprite</span></strong>
             : <strong>Raw<span>Sprite Minecraft</span></strong>}<small>{mode === 'rawsprite' ? 'PIXEL ART EDITOR' : 'PIXEL TEXTURE EDITOR'}</small></div>
         </div>
-        <div className="document-title">
-          <FileImage size={15} />
-          <input aria-label="Имя файла" value={filename} onChange={(event) => { setFilename(event.target.value); setDirty(true) }} />
-          {dirty && <span className="dirty-dot" title="Есть несохранённые изменения" />}
-        </div>
         <input ref={fileInputRef} type="file" accept="image/png,image/*" onChange={handleImport} hidden />
         <input ref={projectInputRef} type="file" accept={mode === 'rawsprite' ? '.rsp,.json,application/json' : '.mts,.json,application/json'} onChange={handleOpenProjectFile} hidden />
         <input ref={skinInputRef} type="file" accept="image/png" onChange={handleImportSkin} hidden />

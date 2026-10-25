@@ -13,10 +13,10 @@ The application layer is now split into separate bundles:
 
 | App | Bundle | Installer |
 |---|---|---|
-| RawSprite | ~390 KB JS | `RawSprite 0.1.2 setup.exe` |
-| RawSprite Minecraft | ~1.56 MB JS (Three.js, skinview3d, model loaders) | `RawSprite Minecraft 0.14.0 setup.exe` |
+| RawSprite | ~390 KB JS | `RawSprite 0.1.3 setup.exe` |
+| RawSprite Minecraft | ~1.56 MB JS (Three.js, skinview3d, model loaders) | `RawSprite Minecraft 0.14.1 setup.exe` |
 
-RawSprite does not import `three`, `skinview3d` or `ElytraViewer`. The Minecraft app injects `ElytraViewer` as a preview component.
+RawSprite does not import `three`, `skinview3d`, the model loaders or `ElytraViewer`. The Minecraft app injects `MinecraftPreview` as a preview component.
 
 The old root Vite/Tauri shell remains as a compatibility/test harness while the apps are stabilised.
 
@@ -43,7 +43,7 @@ The old root Vite/Tauri shell remains as a compatibility/test harness while the 
 `@rawsprite/plugin-minecraft` supplies:
 
 - `ElytraViewer` with a live `skinview3d` player/elytra/cape preview.
-- **Blockbench `.bbmodel` and Bedrock `.geo.json` import** through the **Модель…** button, with automatic framing, orbit, auto-rotate and current-canvas texturing. Switch back with **Элитры**.
+- **Blockbench `.bbmodel` and Bedrock `.geo.json` import** through the **Модель…** button, with automatic framing, orbit, auto-rotate and current-canvas texturing. **Сетка** and **Границы** work for imported models too. Switch back with **Элитры**.
 - Direct 3D painting via UV raycasting.
 - Pixel grid and geometry boundary overlays on the model.
 - Shift-preview of the crouched pose with wider elytra angles.
@@ -73,8 +73,8 @@ docs/                     # architecture and release notes
 Built locally (unsigned):
 
 ```text
-apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.2_x64-setup.exe
-apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.14.0_x64-setup.exe
+apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.3_x64-setup.exe
+apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.14.1_x64-setup.exe
 ```
 
 SmartScreen will warn because the installers are unsigned: choose **«Подробнее» → «Выполнить в любом случае»**.

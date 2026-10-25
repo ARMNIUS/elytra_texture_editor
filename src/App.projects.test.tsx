@@ -102,7 +102,6 @@ describe('multiple projects', () => {
     createProject()
     expect(tabs(container)).toHaveLength(2)
     expect(activeTabName(container)).toBe('Без названия 1.mts')
-    expect((container.querySelector('.document-title input') as HTMLInputElement).value).toBe('Без названия 1.mts')
     expect(container.querySelectorAll('.document-tab-active')).toHaveLength(1)
   })
 

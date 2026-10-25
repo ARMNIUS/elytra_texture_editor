@@ -146,9 +146,9 @@ describe('project documents', () => {
     const file = new File([JSON.stringify(legacy)], 'legacy.mts', { type: 'application/json' })
     fireEvent.change(projectInput(container), { target: { files: [file] } })
 
-    await waitFor(() => expect(container.querySelectorAll('.layer-row')).toHaveLength(1))
-    expect(container.textContent).toContain('Проект загружен: legacy.mts')
-    expect((container.querySelector('.document-title input') as HTMLInputElement).value).toBe('legacy.png')
+    await waitFor(() => expect(container.textContent).toContain('Проект загружен: legacy.mts'))
+    expect(container.querySelectorAll('.layer-row')).toHaveLength(1)
+    expect(container.querySelector('.document-tab-active .document-tab-name')?.textContent).toBe('legacy.png')
     // The legacy tool id survives the mapping to the new tool union.
     expect(container.textContent).toContain('Заливка')
   })

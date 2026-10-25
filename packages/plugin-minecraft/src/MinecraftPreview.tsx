@@ -42,7 +42,7 @@ export default function MinecraftPreview(props: Props) {
   return (
     <div className="minecraft-preview">
       {model
-        ? <ModelPreview model={model} textureUrl={textureUrl} autoRotate={props.autoRotate} visible={props.visible} />
+        ? <ModelPreview model={model} textureUrl={textureUrl} autoRotate={props.autoRotate} visible={props.visible} showGrid={props.showGrid} showBounds={props.showBounds} />
         : <ElytraViewer {...props} />}
       <div className="model-import-bar">
         <button type="button" onClick={() => fileRef.current?.click()} title="Загрузить .bbmodel или Bedrock .geo.json">
