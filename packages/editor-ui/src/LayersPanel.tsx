@@ -1,7 +1,7 @@
 import React from 'react'
 import { useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
-import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, Merge, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, Merge, Plus, Trash2 } from './icons'
 import { useContextMenu } from './ContextMenu'
 import type { Layer } from '@rawsprite/core/layers'
 

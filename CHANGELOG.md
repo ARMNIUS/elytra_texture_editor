@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.8 / RawSprite 0.1.6 — Welcome window, Windows 98 icons, close prompt
+
+- Added a startup welcome window with the app icon/name and three actions: **Создать проект**, **Открыть проект**, **Импортировать PNG**.
+- Replaced all UI icons with the user's **w98_*** Windows 98 icon set (including native window/installer icons). Only w98_-prefixed icons are used.
+- Closing the app with unsaved changes now opens the same classic confirmation as closing a dirty tab, with **Сохранить / Не сохранять / Отмена**. Saving closes only after a successful save; tab closing also offers the same three choices.
+- Desktop close uses Tauri's close-request handler; the browser preview falls back to the native beforeunload prompt.
+- Tests: 144.
+- Installers: RawSprite 0.1.6, RawSprite Minecraft 0.14.8.
+
 ## 0.14.7 / RawSprite 0.1.5 — Scalable 16×16 checker
 
 - Restored the zoom-scaled transparency checkerboard; one checker cell is now 16×16 (a 32×32 pattern) instead of 8×8, with the same #8f8f8f/#b8b8b8 colors.

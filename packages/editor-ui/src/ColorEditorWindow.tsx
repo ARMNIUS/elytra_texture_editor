@@ -2,7 +2,7 @@ import React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from './icons'
 import { formatRgbaExact, hsvToRgb, normalizeRgbaColor, parseRgba, rgbToHsv, withAlpha } from '@rawsprite/core/color'
 import type { HSV, RGB } from '@rawsprite/core/color'
 

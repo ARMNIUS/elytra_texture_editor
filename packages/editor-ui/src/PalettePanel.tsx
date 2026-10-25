@@ -1,7 +1,7 @@
 import React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ChangeEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { Check, ChevronLeft, ChevronRight, Copy, Download, Lock, MoreHorizontal, Pencil, Plus, SlidersHorizontal, Trash2, Unlock, Upload, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, Download, Lock, MoreHorizontal, Pencil, Plus, SlidersHorizontal, Trash2, Unlock, Upload, X } from './icons'
 import { useContextMenu } from './ContextMenu'
 import ColorEditorWindow from './ColorEditorWindow'
 import ConfirmDialog from './ConfirmDialog'

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from './icons'
 import XpIcon from './XpIcon'
 
 type Props = {
@@ -9,15 +9,18 @@ type Props = {
   title?: string
   message: string
   confirmLabel?: string
+  secondaryLabel?: string
+  secondaryDanger?: boolean
   cancelLabel?: string
   danger?: boolean
   onConfirm: () => void
+  onSecondary?: () => void
   onCancel: () => void
 }
 
 export default function ConfirmDialog({
-  open, title = 'Подтверждение', message, confirmLabel = 'ОК', cancelLabel = 'Отмена',
-  danger = false, onConfirm, onCancel,
+  open, title = 'Подтверждение', message, confirmLabel = 'ОК', secondaryLabel, secondaryDanger = true,
+  cancelLabel = 'Отмена', danger = false, onConfirm, onSecondary, onCancel,
 }: Props) {
   useEffect(() => {
     if (!open) return
@@ -56,6 +59,9 @@ export default function ConfirmDialog({
         </div>
         <div className="confirm-actions">
           <button type="button" className={danger ? 'confirm-primary confirm-danger' : 'confirm-primary'} onClick={onConfirm} autoFocus>{confirmLabel}</button>
+          {secondaryLabel && onSecondary && (
+            <button type="button" className={secondaryDanger ? 'confirm-danger' : ''} onClick={onSecondary}>{secondaryLabel}</button>
+          )}
           <button type="button" onClick={onCancel}>{cancelLabel}</button>
         </div>
       </div>

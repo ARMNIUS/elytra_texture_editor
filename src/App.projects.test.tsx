@@ -158,12 +158,14 @@ describe('multiple projects', () => {
     fireEvent.click(screen.getByLabelText('Закрыть elytra.png'))
     const dialog = screen.getByRole('alertdialog', { name: 'Закрытие проекта' })
     expect(dialog).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Сохранить' })).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Не сохранять' })).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(tabs(container)).toHaveLength(1)
 
     fireEvent.click(screen.getByLabelText('Закрыть elytra.png'))
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Закрыть' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Не сохранять' }))
     // Closing the last tab creates a fresh empty project.
     expect(tabs(container)).toHaveLength(1)
     expect(activeTabName(container)).toBe('Без названия 1.mts')

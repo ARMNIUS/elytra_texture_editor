@@ -13,6 +13,7 @@
     "./modelLoader": "./src/modelLoader.ts"
   },
   "dependencies": {
+    "@rawsprite/editor-ui": "*",
     "three-blockbench": "^0.1.0",
     "@bedrock-viewer/model-viewer": "^0.1.1"
   }

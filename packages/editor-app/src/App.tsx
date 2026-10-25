@@ -8,7 +8,8 @@ import {
   Paintbrush, ScanLine, PersonStanding,
   SquareDashedMousePointer, Slash, Square, Circle, Merge, Plus,
   FlipHorizontal, FlipVertical, RefreshCw, RotateCcw, X,
-} from 'lucide-react'
+  appIconRaw, appIconMinecraft,
+} from '@rawsprite/editor-ui/icons'
 import TextureCanvas from '@rawsprite/editor-ui/TextureCanvas'
 import PalettePanel from '@rawsprite/editor-ui/PalettePanel'
 import LayersPanel from '@rawsprite/editor-ui/LayersPanel'
@@ -16,6 +17,7 @@ import ShortcutsModal, { defaultShortcuts, normalizeShortcuts } from '@rawsprite
 import ConfirmDialog from '@rawsprite/editor-ui/ConfirmDialog'
 import NewDocumentDialog from '@rawsprite/editor-ui/NewDocumentDialog'
 import XpIcon from '@rawsprite/editor-ui/XpIcon'
+import WelcomeDialog from '@rawsprite/editor-ui/WelcomeDialog'
 import { useContextMenu } from '@rawsprite/editor-ui/ContextMenu'
 import type { ContextMenuItem } from '@rawsprite/editor-ui/ContextMenu'
 import type { ShortcutId, ShortcutMap } from '@rawsprite/editor-ui/ShortcutsModal'
@@ -235,6 +237,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const [activeDocumentId, setActiveDocumentId] = useState(() => documents[0].id)
   const [newDocumentOpen, setNewDocumentOpen] = useState(false)
   const [pendingClose, setPendingClose] = useState<{ id: string; filename: string } | null>(null)
+  const [appCloseOpen, setAppCloseOpen] = useState(false)
   const browserProjectHandlesRef = useRef(new Map<string, BrowserFileHandle>())
   const documentsRef = useRef(documents)
   const activeDocRef = useRef(activeDocumentId)
@@ -326,6 +329,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const [tool, setTool] = useState<ToolId>('brush')
   const previousToolRef = useRef<ToolId>('brush')
   const [viewMode, setViewMode] = useState<ViewMode>(previewAvailable ? 'split' : '2d')
+  const [welcomeOpen, setWelcomeOpen] = useState(() => import.meta.env.MODE !== 'test')
   const [showGrid, setShowGrid] = useState(false)
   const [showUv, setShowUv] = useState(previewAvailable)
   const [show3dGrid, setShow3dGrid] = useState(false)
@@ -796,11 +800,61 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     const doc = documentsRef.current.find((document) => document.id === id)
     if (!doc) return
     if (doc.dirty) {
+      if (id !== activeDocRef.current) activateDocument(id)
       setPendingClose({ id, filename: doc.filename })
       return
     }
     performCloseDocument(id)
-  }, [performCloseDocument])
+  }, [activateDocument, performCloseDocument])
+
+  const forceCloseApp = useCallback(async () => {
+    if (isDesktopRuntime()) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window')
+        await getCurrentWindow().destroy()
+        return
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    window.close()
+  }, [])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (documentsRef.current.some((document) => document.dirty)) {
+        event.preventDefault()
+        event.returnValue = ''
+      }
+    }
+    // In the desktop shell the custom close prompt owns this flow. The browser
+    // preview uses the native beforeunload prompt instead.
+    if (!isDesktopRuntime()) window.addEventListener('beforeunload', handleBeforeUnload)
+    let unlisten: (() => void) | undefined
+    let cancelled = false
+    if (isDesktopRuntime()) {
+      void (async () => {
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window')
+          const stop = await getCurrentWindow().onCloseRequested((event) => {
+            if (documentsRef.current.some((document) => document.dirty)) {
+              event.preventDefault()
+              setAppCloseOpen(true)
+            }
+          })
+          if (cancelled) stop()
+          else unlisten = stop
+        } catch (error) {
+          console.error(error)
+        }
+      })()
+    }
+    return () => {
+      cancelled = true
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      unlisten?.()
+    }
+  }, [])
 
   const closeActiveProject = useCallback(() => closeDocument(activeDocRef.current), [closeDocument])
 
@@ -981,7 +1035,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     },
   }), [filename, width, height, selection, currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
 
-  const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean) => {
+  const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean): Promise<boolean> => {
     const activeId = activeDocRef.current
     const handle = saveAs ? undefined : browserProjectHandlesRef.current.get(activeId)
     const name = toProjectName(filename, projectExtension)
@@ -990,42 +1044,42 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       name,
       { handle, accept: { [projectMime]: [`.${projectExtension}`] } },
     )
-    if (!result.saved) return
+    if (!result.saved) return false
     if (result.handle) browserProjectHandlesRef.current.set(activeId, result.handle)
     if (activeDocRef.current === activeId) {
       setFilename(basename(result.handle?.name ?? name))
       setDirty(false)
     }
     setStatus(`Проект сохранён (.${projectExtension}) · ${layersRef.current.length} сл.`)
+    return true
   }, [filename, projectExtension, projectMime, setDirty, setFilename])
 
-  const saveProject = useCallback((saveAs = false) => {
+  const saveProject = useCallback(async (saveAs = false): Promise<boolean> => {
     const json = JSON.stringify(buildProjectFile(), null, 2)
     if (!isDesktopRuntime()) {
-      void saveProjectInBrowser(json, saveAs)
-      return
+      return saveProjectInBrowser(json, saveAs)
     }
     const activeId = activeDocRef.current
     const proposed = projectPath ?? toProjectName(filename, projectExtension)
-    void (async () => {
-      try {
-        const selected = !saveAs && projectPath
-          ? projectPath
-          : await pickSavePath(proposed, [{ name: projectLabel, extensions: [projectExtension] }], 'Сохранить проект')
-        if (!selected) return
-        const finalPath = ensureExtension(selected, projectExtension)
-        await writeTextFile(finalPath, json)
-        if (activeDocRef.current === activeId) {
-          setProjectPath(finalPath)
-          setFilename(basename(finalPath))
-          setDirty(false)
-        }
-        setStatus(`Проект сохранён: ${basename(finalPath)}`)
-      } catch (error) {
-        console.error(error)
-        setStatus(`Не удалось сохранить проект: ${error instanceof Error ? error.message : 'ошибка'}`)
+    try {
+      const selected = !saveAs && projectPath
+        ? projectPath
+        : await pickSavePath(proposed, [{ name: projectLabel, extensions: [projectExtension] }], 'Сохранить проект')
+      if (!selected) return false
+      const finalPath = ensureExtension(selected, projectExtension)
+      await writeTextFile(finalPath, json)
+      if (activeDocRef.current === activeId) {
+        setProjectPath(finalPath)
+        setFilename(basename(finalPath))
+        setDirty(false)
       }
-    })()
+      setStatus(`Проект сохранён: ${basename(finalPath)}`)
+      return true
+    } catch (error) {
+      console.error(error)
+      setStatus(`Не удалось сохранить проект: ${error instanceof Error ? error.message : 'ошибка'}`)
+      return false
+    }
   }, [buildProjectFile, filename, projectExtension, projectLabel, projectPath, setDirty, setFilename, setProjectPath, saveProjectInBrowser])
 
   const saveProjectAs = useCallback(() => saveProject(true), [saveProject])
@@ -1177,6 +1231,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (welcomeOpen) return
       const target = event.target as HTMLElement | null
       const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
       if (typing || showShortcuts) return
@@ -1239,7 +1294,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [shortcuts, showShortcuts, viewMode, undo, redo, openFile, openProject, saveProject, saveProjectAs, exportPng, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
+  }, [shortcuts, showShortcuts, welcomeOpen, viewMode, undo, redo, openFile, openProject, saveProject, saveProjectAs, exportPng, chooseTool, copySelection, copyMerged, cutSelection, pasteClipboard, pasteClipboardAsNewLayer, deleteSelection, selectAll, deselect, floating, cancelSelectionTransform, newProject, closeActiveProject, cycleDocument])
 
   const handleImportSkin = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1425,7 +1480,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     <div className="app-shell" onContextMenu={appContextMenu} onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }} onAuxClick={(event) => { if (event.button === 1) event.preventDefault() }}>
       <header className="topbar">
         <div className="brand-lockup">
-          <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
+          <div className="brand-mark"><img className="brand-icon" src={mode === 'rawsprite' ? appIconRaw : appIconMinecraft} width={26} height={26} alt="" /></div>
           <div className="brand-text">{mode === 'rawsprite'
             ? <strong>Raw<span>Sprite</span></strong>
             : <strong>Raw<span>Sprite Minecraft</span></strong>}<small>{mode === 'rawsprite' ? 'PIXEL ART EDITOR' : 'PIXEL TEXTURE EDITOR'}</small></div>
@@ -1638,19 +1693,52 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}
+      <WelcomeDialog
+        open={welcomeOpen}
+        appName={mode === 'rawsprite' ? 'RawSprite' : 'RawSprite Minecraft'}
+        icon={mode === 'rawsprite' ? appIconRaw : appIconMinecraft}
+        onCreate={() => { setWelcomeOpen(false); setNewDocumentOpen(true) }}
+        onOpen={() => { setWelcomeOpen(false); void openProject() }}
+        onImportPng={() => { setWelcomeOpen(false); openFile() }}
+        onClose={() => setWelcomeOpen(false)}
+      />
       <NewDocumentDialog open={newDocumentOpen} defaultWidth={64} defaultHeight={mode === 'rawsprite' ? 64 : 32} onCancel={() => setNewDocumentOpen(false)} onCreate={newSprite} />
       <ConfirmDialog
         open={pendingClose !== null}
         title="Закрытие проекта"
-        message={pendingClose ? `Закрыть проект «${pendingClose.filename}» без сохранения?` : ''}
-        confirmLabel="Закрыть"
+        message={pendingClose ? `Сохранить изменения в проекте «${pendingClose.filename}» перед закрытием?` : ''}
+        confirmLabel="Сохранить"
+        secondaryLabel="Не сохранять"
+        secondaryDanger
         cancelLabel="Отмена"
-        danger
         onConfirm={() => {
+          const closeId = pendingClose?.id
+          if (!closeId) return
+          void saveProject().then((saved) => {
+            if (!saved) return
+            performCloseDocument(closeId)
+            setPendingClose(null)
+          })
+        }}
+        onSecondary={() => {
           if (pendingClose) performCloseDocument(pendingClose.id)
           setPendingClose(null)
         }}
         onCancel={() => setPendingClose(null)}
+      />
+      <ConfirmDialog
+        open={appCloseOpen}
+        title="Закрытие приложения"
+        message="Есть несохранённые изменения. Сохранить их перед выходом?"
+        confirmLabel="Сохранить"
+        secondaryLabel="Не сохранять"
+        secondaryDanger
+        cancelLabel="Отмена"
+        onConfirm={() => {
+          void saveProject().then((saved) => { if (saved) void forceCloseApp() })
+        }}
+        onSecondary={() => { setAppCloseOpen(false); void forceCloseApp() }}
+        onCancel={() => setAppCloseOpen(false)}
       />
     </div>
   )
