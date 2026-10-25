@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import {
-  AmbientLight, Box3, Box3Helper, Color, DirectionalLight, GridHelper, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  AmbientLight, Box3, Box3Helper, BufferGeometry, Color, DirectionalLight, GridHelper, LineBasicMaterial, LineSegments, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { LineBasicMaterial } from 'three'
+import { makeUvGridGeometry } from './uvGrid'
 import type { LoadedModel } from './modelLoader'
 
 type Props = {
@@ -13,10 +13,13 @@ type Props = {
   visible: boolean
   showGrid: boolean
   showBounds: boolean
+  showFloorGrid?: boolean
+  width: number
+  height: number
 }
 
 /** Generic Three.js viewport for imported Blockbench/Bedrock models. */
-export default function ModelPreview({ model, textureUrl, autoRotate, visible, showGrid, showBounds }: Props) {
+export default function ModelPreview({ model, textureUrl, autoRotate, visible, showGrid, showBounds, showFloorGrid = false, width, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const sceneRef = useRef<Scene | null>(null)
@@ -106,7 +109,7 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
     const center = centerRef.current
     if (!scene || !box || !size || !center) return
     const helpers: Array<GridHelper | Box3Helper> = []
-    if (showGrid) {
+    if (showFloorGrid) {
       const footprint = Math.max(size.x, size.z, 1) * 2
       const grid = new GridHelper(footprint, 16, 0x7291ad, 0x3a4a5a)
       grid.position.set(center.x, box.min.y, center.z)
@@ -135,7 +138,40 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
         for (const material of materials) material.dispose()
       }
     }
-  }, [showGrid, showBounds, model])
+  }, [showFloorGrid, showBounds, model])
+
+  useEffect(() => {
+    if (!showGrid) return
+    const lines: LineSegments[] = []
+    model.object3D.traverse((child) => {
+      if (!(child instanceof Mesh)) return
+      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.008, width, height)
+      if (!geometry.getAttribute('position')?.count) {
+        geometry.dispose()
+        return
+      }
+      const material = new LineBasicMaterial({
+        color: 0xeaf4ff,
+        transparent: true,
+        opacity: 0.42,
+        depthTest: true,
+        depthWrite: false,
+        toneMapped: false,
+      })
+      const line = new LineSegments(geometry, material)
+      line.name = 'rawsprite-model-uv-grid'
+      line.renderOrder = 8
+      child.add(line)
+      lines.push(line)
+    })
+    return () => {
+      for (const line of lines) {
+        line.parent?.remove(line)
+        line.geometry.dispose()
+        ;(line.material as LineBasicMaterial).dispose()
+      }
+    }
+  }, [showGrid, model, width, height])
 
   useEffect(() => {
     const controls = controlsRef.current

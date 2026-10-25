@@ -326,6 +326,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const [showGrid, setShowGrid] = useState(true)
   const [showUv, setShowUv] = useState(previewAvailable)
   const [show3dGrid, setShow3dGrid] = useState(false)
+  const [showFloorGrid, setShowFloorGrid] = useState(false)
   const [showModelBounds, setShowModelBounds] = useState(false)
   const [paintOn3d, setPaintOn3d] = useState(true)
   const [crouchPinned, setCrouchPinned] = useState(false)
@@ -1539,7 +1540,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         {mode === 'minecraft' && Preview && (
         <section className={`preview-area ${viewMode === '2d' ? 'preview-area-hidden' : ''}`} onContextMenu={(event) => openContextMenu(event, [
           { label: paintOn3d ? 'Отключить рисование по модели' : 'Рисовать по модели', checked: paintOn3d, action: () => setPaintOn3d((value) => !value) },
-          { label: show3dGrid ? 'Скрыть сетку на модели' : 'Показать сетку на модели', checked: show3dGrid, action: () => setShow3dGrid((value) => !value) },
+          { label: show3dGrid ? 'Скрыть UV-сетку на модели' : 'Показать UV-сетку на модели', checked: show3dGrid, action: () => setShow3dGrid((value) => !value) },
+          { label: showFloorGrid ? 'Скрыть координатную сетку' : 'Показать координатную сетку', checked: showFloorGrid, action: () => setShowFloorGrid((value) => !value) },
           { label: showModelBounds ? 'Скрыть границы модели' : 'Показать границы модели', checked: showModelBounds, action: () => setShowModelBounds((value) => !value) },
           { separator: true },
           { label: crouching ? 'Убрать присяд' : 'Присяд и раскрытие элитр', shortcut: 'Shift', checked: crouching, action: () => setCrouchPinned((value) => !value) },
@@ -1553,7 +1555,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
             <button className={`toolbar-action tiny-action ${autoRotate ? 'toolbar-action-active' : ''}`} onClick={() => setAutoRotate((value) => !value)} title="Автовращение"><RotateCw size={14} /></button>
             <span className="live-label"><span className="live-dot" /> LIVE</span>
           </div></div>
-          <Preview pixels={displayPixels} width={width} height={height} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
+          <Preview pixels={displayPixels} width={width} height={height} visible={viewMode !== '2d'} autoRotate={autoRotate} skinUrl={skinUrl} tool={tool} color={currentColor} showGrid={show3dGrid} showBounds={showModelBounds} paintEnabled={paintOn3d} crouching={crouching} onPaintLine={paint} onFill={fill} onStrokeStart={beginStroke} onStrokeEnd={endStroke} onPick={handlePickColor} onNotice={setStatus} showFloorGrid={showFloorGrid} onTogglePaint={() => setPaintOn3d((value) => !value)} onToggleGrid={() => setShow3dGrid((value) => !value)} onToggleBounds={() => setShowModelBounds((value) => !value)} onToggleCrouch={() => setCrouchPinned((value) => !value)} onToggleAutoRotate={() => setAutoRotate((value) => !value)} />
         </section>
         )}
 

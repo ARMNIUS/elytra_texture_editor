@@ -6,7 +6,7 @@ import ModelPreview from './ModelPreview'
 import { loadModelFromText } from './modelLoader'
 import type { LoadedModel } from './modelLoader'
 
-type Props = ComponentProps<typeof ElytraViewer>
+type Props = ComponentProps<typeof ElytraViewer> & { showFloorGrid?: boolean }
 
 export default function MinecraftPreview(props: Props) {
   const [model, setModel] = useState<LoadedModel | null>(null)
@@ -42,7 +42,7 @@ export default function MinecraftPreview(props: Props) {
   return (
     <div className="minecraft-preview">
       {model
-        ? <ModelPreview model={model} textureUrl={textureUrl} autoRotate={props.autoRotate} visible={props.visible} showGrid={props.showGrid} showBounds={props.showBounds} />
+        ? <ModelPreview model={model} textureUrl={textureUrl} autoRotate={props.autoRotate} visible={props.visible} showGrid={props.showGrid} showBounds={props.showBounds} showFloorGrid={props.showFloorGrid} width={props.width} height={props.height} />
         : <ElytraViewer {...props} />}
       <div className="model-import-bar">
         <button type="button" onClick={() => fileRef.current?.click()} title="Загрузить .bbmodel или Bedrock .geo.json">

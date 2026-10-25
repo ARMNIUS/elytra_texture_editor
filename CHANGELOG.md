@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.2 — UV pixel grid on imported models
+
+- Fixed the 3D grid: imported `.bbmodel`/Bedrock models now get a **pixel UV grid on the model surface**, generated from each mesh's real UV atlas with `makeUvGridGeometry`, instead of a coordinate floor grid.
+- The coordinate floor grid is still available as **«Показать координатную сетку»** in the 3D preview context menu; it is off by default.
+- Grid/bounds toggles now work for imported models, including after switching models; their Three.js helpers are disposed correctly.
+- RawSprite 0.1.3 remains current; RawSprite Minecraft is 0.14.2.
+- Tests: 139.
+
 ## 0.14.1 — Cleaner chrome and model overlays
 
 - Removed the duplicate project-name field from the header in both apps; the active tab is now the single visible project name.
