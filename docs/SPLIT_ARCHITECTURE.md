@@ -167,9 +167,17 @@ interface PluginContext {
 | `skinview3d` | player/skin/elytra/cape | MIT | уже используется, three ^0.156 |
 | [`three-blockbench`](https://www.npmjs.com/package/three-blockbench) | `.bbmodel`: кубы, меши, кости, UV, текстуры, анимации | MIT | three >=0.170 |
 | [`@bedrock-viewer/model-viewer`](https://www.npmjs.com/package/@bedrock-viewer/model-viewer) | Bedrock geometry + анимации | MIT | three >=0.185.1 |
+| [`@bridge-editor/model-viewer`](https://www.npmjs.com/package/@bridge-editor/model-viewer) | альтернатива для Bedrock, зрелый рендерер Bridge | MIT | three ^0.147 (вложенная версия) |
 | `bbmodel-viewer` | резервный вариант, если обновление three окажется проблемным | MIT | three >=0.150, без анимаций |
 
 Следствие: **three обновляется до 0.185+**. `skinview3d` сейчас ставит three ^0.156 как зависимость, поэтому npm может держать две версии three (вложенную для skinview3d и общую для загрузчиков). Это допустимо для первого прохода, но требует проверки бандла. Если конфликт версий станет проблемой — либо переносим player/elytra на общий рендерер, либо фиксируем `skinview3d`-ветку отдельно.
+
+Перед интеграцией делаем короткий spike:
+
+1. Загрузить один реальный `.bbmodel` через `three-blockbench` и один `.geo.json` через `@bedrock-viewer`/`@bridge-editor` на Three 0.185+.
+2. Проверить UV, текстуры, raycast и обновление текстуры.
+3. Проверить, что текущий `ElytraViewer`/skinview3d не ломается после обновления Three.
+4. Выбрать один Bedrock-загрузчик; второй оставить как fallback.
 
 Загрузчики отдают `three.Group`/`SkinnedMesh` и материалы. Для редактора нужен общий адаптер `ModelSource`, который умеет:
 
@@ -325,8 +333,8 @@ type MinecraftExtension = {
 ### Этап 3. Minecraft MVP с готовыми загрузчиками (2–3 недели)
 
 - Обновить `three` до 0.185+ и проверить `skinview3d`/player.
+- Spike/выбор Bedrock-загрузчика: `@bedrock-viewer/model-viewer` или `@bridge-editor/model-viewer`.
 - Подключить `three-blockbench` для `.bbmodel`.
-- Подключить `@bedrock-viewer/model-viewer` для Bedrock geometry.
 - Адаптер `ModelSource`: object3D, меши, UV, замена текстуры, raycast-покраска.
 - Панель модели, слоты текстур, 3D/split.
 - UV-оверлей и покраска по UV для загруженных моделей.
