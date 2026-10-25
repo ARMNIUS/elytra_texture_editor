@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.3 — Correct model textures and pixel grid
+
+- `.bbmodel` files with an embedded texture now keep that texture instead of being overwritten by the current canvas. This fixes the stretched/squashed model textures.
+- UV grids use the model's own texture resolution (`resolution` for BBModel, `description.texture_width/height` for Bedrock), so grid lines follow the real UV atlas.
+- Raw pixel UVs are detected instead of being multiplied by texture size a second time; the surface grid no longer doubles or explodes on raw-UV models.
+- The optional coordinate floor grid is now generated from the model bounds with **one cell per model pixel** (using the model's unit scale), so its width/length match the model.
+- Tests: 139.
+- Installers: RawSprite 0.1.3, RawSprite Minecraft 0.14.3.
+
 ## 0.14.2 — UV pixel grid on imported models
 
 - Fixed the 3D grid: imported `.bbmodel`/Bedrock models now get a **pixel UV grid on the model surface**, generated from each mesh's real UV atlas with `makeUvGridGeometry`, instead of a coordinate floor grid.

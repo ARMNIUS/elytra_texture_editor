@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
-  AmbientLight, Box3, Box3Helper, BufferGeometry, Color, DirectionalLight, GridHelper, LineBasicMaterial, LineSegments, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  AmbientLight, Box3, Box3Helper, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, LineBasicMaterial, LineSegments, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { makeUvGridGeometry } from './uvGrid'
@@ -19,7 +19,7 @@ type Props = {
 }
 
 /** Generic Three.js viewport for imported Blockbench/Bedrock models. */
-export default function ModelPreview({ model, textureUrl, autoRotate, visible, showGrid, showBounds, showFloorGrid = false, width, height }: Props) {
+export default function ModelPreview({ model, textureUrl, autoRotate, visible, showGrid, showBounds, showFloorGrid = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const sceneRef = useRef<Scene | null>(null)
@@ -108,15 +108,33 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
     const size = sizeRef.current
     const center = centerRef.current
     if (!scene || !box || !size || !center) return
-    const helpers: Array<GridHelper | Box3Helper> = []
+    const helpers: Array<LineSegments | Box3Helper> = []
     if (showFloorGrid) {
-      const footprint = Math.max(size.x, size.z, 1) * 2
-      const grid = new GridHelper(footprint, 16, 0x7291ad, 0x3a4a5a)
-      grid.position.set(center.x, box.min.y, center.z)
-      const gridMaterial = grid.material as LineBasicMaterial
-      gridMaterial.transparent = true
-      gridMaterial.opacity = 0.55
-      gridMaterial.depthWrite = false
+      // A coordinate grid aligned to model pixels: one cell = one model pixel.
+      const unit = model.unitScale
+      const widthPixels = Math.max(1, Math.round(size.x / unit))
+      const depthPixels = Math.max(1, Math.round(size.z / unit))
+      const y = box.min.y - unit * 0.001
+      const positions: number[] = []
+      for (let x = 0; x <= widthPixels; x++) {
+        const px = box.min.x + (size.x * x) / widthPixels
+        positions.push(px, y, box.min.z, px, y, box.max.z)
+      }
+      for (let z = 0; z <= depthPixels; z++) {
+        const pz = box.min.z + (size.z * z) / depthPixels
+        positions.push(box.min.x, y, pz, box.max.x, y, pz)
+      }
+      const geometry = new BufferGeometry()
+      geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+      const gridMaterial = new LineBasicMaterial({
+        color: 0x7291ad,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      })
+      const grid = new LineSegments(geometry, gridMaterial)
+      grid.name = 'rawsprite-model-pixel-grid'
+      grid.renderOrder = 6
       scene.add(grid)
       helpers.push(grid)
     }
@@ -145,7 +163,7 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
     const lines: LineSegments[] = []
     model.object3D.traverse((child) => {
       if (!(child instanceof Mesh)) return
-      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.008, width, height)
+      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.008, model.textureWidth, model.textureHeight)
       if (!geometry.getAttribute('position')?.count) {
         geometry.dispose()
         return
@@ -171,7 +189,7 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
         ;(line.material as LineBasicMaterial).dispose()
       }
     }
-  }, [showGrid, model, width, height])
+  }, [showGrid, model])
 
   useEffect(() => {
     const controls = controlsRef.current

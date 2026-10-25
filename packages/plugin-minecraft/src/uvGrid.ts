@@ -19,10 +19,22 @@ export function makeUvGridGeometry(source: BufferGeometry, surfaceOffset = 0.008
   const out: number[] = []
   const epsilon = 1e-6
 
+  // Most loaders normalize UVs to 0..1, but raw Blockbench/Bedrock geometry can
+  // keep pixel coordinates. Detect that so the grid is not multiplied twice.
+  let maxU = 0
+  let maxV = 0
+  for (let i = 0; i < uv.count; i++) {
+    maxU = Math.max(maxU, uv.getX(i))
+    maxV = Math.max(maxV, uv.getY(i))
+  }
+  const normalizedUv = maxU <= 1.0001 && maxV <= 1.0001
+  const uScale = normalizedUv ? width : 1
+  const vScale = normalizedUv ? height : 1
+
   const vertex = (i: number) => ({
     p: new Vector3().fromBufferAttribute(position, i),
-    u: uv.getX(i) * width,
-    v: (1 - uv.getY(i)) * height,
+    u: normalizedUv ? uv.getX(i) * uScale : uv.getX(i),
+    v: normalizedUv ? (1 - uv.getY(i)) * vScale : uv.getY(i),
   })
   const addSegment = (a: Vector3, b: Vector3, normal: Vector3) => {
     for (const sign of [1, -1]) {
