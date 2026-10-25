@@ -525,14 +525,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px d
   background-color: #8f8f8f !important;
   background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+") !important;
   background-repeat: repeat !important;
-  background-size: 16px 16px !important;
+  background-size: 32px 32px;
   background-position: 0 0 !important;
   image-rendering: pixelated;
 }
 .pixel-cursor-transparent {
   background-color: #8f8f8f !important;
   background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9IiM4ZjhmOGYiLz48cGF0aCBkPSJNMCAwaDh2OEgwek04IDhoOHY4SDh6IiBmaWxsPSIjYjhiOGI4Ii8+PC9zdmc+") !important;
-  background-size: 16px 16px !important;
+  background-size: 32px 32px !important;
   background-position: 0 0 !important;
 }
 

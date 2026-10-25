@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.7 / RawSprite 0.1.5 — Scalable 16×16 checker
+
+- Restored the zoom-scaled transparency checkerboard; one checker cell is now 16×16 (a 32×32 pattern) instead of 8×8, with the same #8f8f8f/#b8b8b8 colors.
+- Tests: 143.
+- Installers: RawSprite 0.1.5, RawSprite Minecraft 0.14.7.
+
 ## 0.14.6 / RawSprite 0.1.4 — Shared editor polish
 
 - **Eyedropper**: picking now reliably writes the sampled color into the current color field and reports it in the status bar; picking a transparent pixel reports that no color changed.

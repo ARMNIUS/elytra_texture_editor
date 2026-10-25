@@ -459,7 +459,7 @@ export default function TextureCanvas({
           style={{
             width: width * zoom,
             height: height * zoom,
-            backgroundSize: '16px 16px',
+            backgroundSize: `${zoom * 32}px ${zoom * 32}px`,
             backgroundPosition: '0 0',
           }}
           title="Колесо мыши — масштабирование"

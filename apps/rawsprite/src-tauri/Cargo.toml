@@ -1,6 +1,6 @@
 [package]
 name = "rawsprite"
-version = "0.1.4"
+version = "0.1.5"
 description = "RawSprite pixel-art and sprite editor"
 authors = ["RawSprite contributors"]
 edition = "2021"
