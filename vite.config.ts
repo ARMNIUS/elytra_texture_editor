@@ -1,8 +1,17 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
+  ssr: {
+    // Workspace packages ship TypeScript source; let Vite transform their JSX
+    // instead of externalizing the symlinked package for Vitest/SSR.
+    noExternal: ['@rawsprite/core', '@rawsprite/editor-ui', '@rawsprite/plugin-api'],
+  },
   clearScreen: false,
   server: {
     host: '127.0.0.1',
@@ -29,3 +38,4 @@ export default defineConfig({
     },
   },
 })
+

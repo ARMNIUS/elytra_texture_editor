@@ -7,6 +7,7 @@
 - Project format version 3 stores the canvas size; versions 1 and 2 still open as 64×32 documents and migrate on load.
 - Undo history is capped by canvas area so 2048×2048 documents do not try to retain 80 full snapshots.
 - The 3D preview is skipped for non-64×32 documents instead of feeding an invalid cape atlas to skinview3d.
+- Started the UI split: Win9x primitives (`ContextMenu`, `ConfirmDialog`, `XpIcon`, `NewDocumentDialog`) and the XP icon set moved into `@rawsprite/editor-ui`; the old component paths are thin re-exports.
 - Tests: 131 (core extraction, arbitrary canvas creation/load/save, custom-canvas painting, project v3, plus all previous checks).
 
 ## 0.12.0 — One paint color, palette lock, Aseprite ellipse

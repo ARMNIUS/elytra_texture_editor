@@ -1,0 +1,13 @@
+{
+  "name": "@rawsprite/editor-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ContextMenu": "./src/ContextMenu.tsx",
+    "./ConfirmDialog": "./src/ConfirmDialog.tsx",
+    "./XpIcon": "./src/XpIcon.tsx",
+    "./NewDocumentDialog": "./src/NewDocumentDialog.tsx"
+  }
+}
