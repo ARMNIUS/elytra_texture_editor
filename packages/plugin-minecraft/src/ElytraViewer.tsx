@@ -246,7 +246,8 @@ export default function ElytraViewer({
       if (!rect.width || !rect.height) return null
       pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
       viewer.playerObject.updateMatrixWorld(true)
-      raycaster.setFromCamera(pointer, viewer.camera)
+      // skinview3d bundles its own Three version; the camera is structurally compatible.
+      raycaster.setFromCamera(pointer, viewer.camera as unknown as Parameters<typeof raycaster.setFromCamera>[1])
       const hits = raycaster.intersectObjects(wingMeshesRef.current, false)
       const uv = hits.find((hit) => hit.uv)?.uv
       if (!uv) return null

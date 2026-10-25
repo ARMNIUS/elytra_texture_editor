@@ -1,3 +1,6 @@
 export { default as ElytraViewer } from './ElytraViewer'
 export * from './defaultElytra'
 export * from './uvGrid'
+export { default as MinecraftPreview } from './MinecraftPreview'
+export { default as ModelPreview } from './ModelPreview'
+export * from './modelLoader'

@@ -16,6 +16,7 @@
     "./types": "./src/types.ts",
     "./PalettePanel": "./src/PalettePanel.tsx",
     "./files": "./src/files.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./model-preview.css": "./src/model-preview.css"
   }
 }

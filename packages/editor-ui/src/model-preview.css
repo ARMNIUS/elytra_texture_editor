@@ -1,0 +1,30 @@
+.minecraft-preview {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.minecraft-preview > .viewer-host { flex: 1; min-height: 0; min-width: 0; }
+.model-preview-host { flex: 1; min-width: 0; min-height: 0; }
+.model-preview-hidden { display: none; }
+.model-preview-canvas { display: block; width: 100%; height: 100%; }
+.model-import-bar {
+  position: absolute;
+  z-index: 8;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+}
+.model-import-bar button {
+  height: 22px;
+  padding: 0 7px;
+  color: #111;
+  background: #d4d0c8;
+  border: 1px solid;
+  border-color: #fff #404040 #404040 #fff;
+  font: 10px Tahoma, sans-serif;
+  cursor: pointer;
+}
+.model-import-bar button:active { border-color: #404040 #fff #fff #404040; }

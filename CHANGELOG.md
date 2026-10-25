@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0 — Model imports (Blockbench + Bedrock)
+
+- Upgraded Three.js to 0.186.1 and added the existing MIT loaders `three-blockbench` and `@bedrock-viewer/model-viewer`.
+- RawSprite Minecraft can now import **Blockbench `.bbmodel`** and **Bedrock `.geo.json`** through the **Модель…** button in the 3D preview.
+- Imported models are framed automatically, orbit with the mouse, support auto-rotate, and use the current canvas as their texture (BBModel materials are rebound to the current texture; Bedrock models receive a texture data URL).
+- The preview can switch back to the player/elytra view with **Элитры**.
+- The Minecraft app is now branded **RawSprite Minecraft** and saves `.mts`; RawSprite keeps `.rsp`.
+- Model imports are a preview foundation: per-model UV painting, model persistence in projects and animations are the next step.
+- Tests: 139 (model format detection plus the previous suite).
+- Installers: RawSprite 0.1.2, RawSprite Minecraft 0.14.0.
+
 ## 0.13.2 — Selection transform fix
 
 - Fixed the selection shrinking after a move/stretch on canvases larger than 64×32. The transform commit recalculated the selection with `blockSelection(scaled, x, y)` but omitted the document width/height, so it clipped to the legacy defaults and shrank on every drag.

@@ -1,6 +1,6 @@
 [package]
 name = "rawsprite-minecraft"
-version = "0.13.2"
+version = "0.14.0"
 description = "RawSprite Minecraft texture editor with 3D preview"
 authors = ["RawSprite contributors"]
 edition = "2021"

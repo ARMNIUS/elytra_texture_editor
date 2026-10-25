@@ -23,13 +23,16 @@
     "tauri:minecraft": "npm run tauri -w @rawsprite/app-minecraft --"
   },
   "dependencies": {
+    "@bedrock-viewer/model-viewer": "^0.1.1",
     "@tauri-apps/api": "^2.8.0",
     "@tauri-apps/plugin-dialog": "^2.8.3",
+    "@types/three": "^0.186.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "skinview3d": "^3.4.2",
-    "three": "^0.156.1"
+    "three": "^0.186.1",
+    "three-blockbench": "^0.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.0",

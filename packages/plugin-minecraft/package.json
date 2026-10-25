@@ -7,6 +7,13 @@
     ".": "./src/index.ts",
     "./ElytraViewer": "./src/ElytraViewer.tsx",
     "./uvGrid": "./src/uvGrid.ts",
-    "./defaultElytra": "./src/defaultElytra.ts"
+    "./defaultElytra": "./src/defaultElytra.ts",
+    "./MinecraftPreview": "./src/MinecraftPreview.tsx",
+    "./ModelPreview": "./src/ModelPreview.tsx",
+    "./modelLoader": "./src/modelLoader.ts"
+  },
+  "dependencies": {
+    "three-blockbench": "^0.1.0",
+    "@bedrock-viewer/model-viewer": "^0.1.1"
   }
 }

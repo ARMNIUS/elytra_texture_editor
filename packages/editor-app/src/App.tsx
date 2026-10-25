@@ -226,7 +226,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const { openContextMenu } = useContextMenu()
   const previewAvailable = mode === 'minecraft' && Preview !== null
   const projectExtension = mode === 'rawsprite' ? 'rsp' : 'mts'
-  const projectLabel = mode === 'rawsprite' ? 'RawSprite project' : 'Minecraft Texture Studio project'
+  const projectLabel = mode === 'rawsprite' ? 'RawSprite project' : 'RawSprite Minecraft project'
   const projectMime = mode === 'rawsprite' ? 'application/x-rawsprite-project' : 'application/x-minecraft-texture-studio'
   const [documents, setDocuments] = useState<DocumentState[]>(() => [mode === 'rawsprite'
     ? createBlankDocument('Без названия 1.rsp', 64, 64)
@@ -384,7 +384,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   useEffect(() => {
     document.title = mode === 'rawsprite'
       ? `${dirty ? '• ' : ''}RawSprite — ${filename || 'Без названия.rsp'}`
-      : `${dirty ? '• ' : ''}Minecraft Texture Studio — ${filename || 'elytra.png'}`
+      : `${dirty ? '• ' : ''}RawSprite Minecraft — ${filename || 'elytra.png'}`
   }, [dirty, filename])
 
   useEffect(() => {
@@ -1367,7 +1367,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
           <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
           <div className="brand-text">{mode === 'rawsprite'
             ? <strong>Raw<span>Sprite</span></strong>
-            : <strong>Minecraft <span>Texture Studio</span></strong>}<small>{mode === 'rawsprite' ? 'PIXEL ART EDITOR' : 'PIXEL TEXTURE EDITOR'}</small></div>
+            : <strong>Raw<span>Sprite Minecraft</span></strong>}<small>{mode === 'rawsprite' ? 'PIXEL ART EDITOR' : 'PIXEL TEXTURE EDITOR'}</small></div>
         </div>
         <div className="document-title">
           <FileImage size={15} />
