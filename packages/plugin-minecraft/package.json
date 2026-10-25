@@ -1,0 +1,12 @@
+{
+  "name": "@rawsprite/plugin-minecraft",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ElytraViewer": "./src/ElytraViewer.tsx",
+    "./uvGrid": "./src/uvGrid.ts",
+    "./defaultElytra": "./src/defaultElytra.ts"
+  }
+}
