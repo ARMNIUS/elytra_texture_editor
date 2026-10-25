@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
 import {
-  AmbientLight, Box3, Box3Helper, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, LineBasicMaterial, LineSegments, Mesh, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  AmbientLight, Box3, Box3Helper, BufferGeometry, Color, DirectionalLight, Float32BufferAttribute, LineBasicMaterial, LineSegments, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { makeUvGridGeometry } from './uvGrid'
+import { installModelGrid } from './modelGrid'
+import type { ModelGridHandle } from './modelGrid'
 import type { LoadedModel } from './modelLoader'
 
 type Props = {
@@ -27,6 +28,7 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
   const sizeRef = useRef<Vector3 | null>(null)
   const centerRef = useRef<Vector3 | null>(null)
   const textureRef = useRef(textureUrl)
+  const gridHandlesRef = useRef<ModelGridHandle[]>([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -159,36 +161,21 @@ export default function ModelPreview({ model, textureUrl, autoRotate, visible, s
   }, [showFloorGrid, showBounds, model])
 
   useEffect(() => {
-    if (!showGrid) return
-    const lines: LineSegments[] = []
-    model.object3D.traverse((child) => {
-      if (!(child instanceof Mesh)) return
-      const geometry = makeUvGridGeometry(child.geometry as BufferGeometry, 0.004, model.textureWidth, model.textureHeight, false)
-      if (!geometry.getAttribute('position')?.count) {
-        geometry.dispose()
-        return
-      }
-      const material = new LineBasicMaterial({
-        color: 0xeaf4ff,
-        transparent: true,
-        opacity: 0.42,
-        depthTest: true,
-        depthWrite: false,
-        toneMapped: false,
-      })
-      const line = new LineSegments(geometry, material)
-      line.name = 'rawsprite-model-uv-grid'
-      line.renderOrder = 8
-      child.add(line)
-      lines.push(line)
-    })
+    const handles = model.materials.map((material) => installModelGrid(
+      material,
+      model.textureWidth,
+      model.textureHeight,
+      showGrid,
+    ))
+    gridHandlesRef.current = handles
     return () => {
-      for (const line of lines) {
-        line.parent?.remove(line)
-        line.geometry.dispose()
-        ;(line.material as LineBasicMaterial).dispose()
-      }
+      for (const handle of handles) handle.dispose()
+      gridHandlesRef.current = []
     }
+  }, [model])
+
+  useEffect(() => {
+    for (const handle of gridHandlesRef.current) handle.setVisible(showGrid)
   }, [showGrid, model])
 
   useEffect(() => {

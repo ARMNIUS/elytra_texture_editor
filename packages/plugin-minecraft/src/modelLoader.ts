@@ -13,6 +13,7 @@ export type LoadedModel = {
   unitScale: number
   textureWidth: number
   textureHeight: number
+  materials: Material[]
   /** Updates the texture for models whose texture is supplied by the editor canvas. */
   updateTexture?: (textureUrl: string) => Promise<void>
   dispose: () => void
@@ -64,10 +65,14 @@ export async function loadModelFromText(
         }
       }
     }
-    // A .bbmodel normally carries its own texture. Keep it: replacing it with the
-    // current (possibly different-sized) canvas would squash the model texture.
-    const hasEmbeddedTexture = model.textures.size > 0
-    if (textureUrl && !hasEmbeddedTexture) await updateTexture(textureUrl)
+    // A .bbmodel normally carries its own texture. Keep a usable embedded map:
+    // replacing it with a different-sized canvas would squash the model texture.
+    const materials = model.materials as Material[]
+    const hasUsableMap = materials.some((material) => {
+      const map = (material as { map?: Texture }).map
+      return Boolean(map && (map.image || map.source?.data))
+    })
+    if (textureUrl && !hasUsableMap) await updateTexture(textureUrl)
     return {
       kind,
       name: fileName.replace(/\.[^.]+$/, ''),
@@ -75,8 +80,9 @@ export async function loadModelFromText(
       unitScale: 1 / 16,
       textureWidth: resolution?.width ?? 64,
       textureHeight: resolution?.height ?? 64,
-      // Only models without an embedded texture follow the canvas while drawing.
-      updateTexture: hasEmbeddedTexture ? undefined : updateTexture,
+      materials,
+      // External/missing textures and textureless models follow the canvas.
+      updateTexture: hasUsableMap ? undefined : updateTexture,
       dispose: () => { texture?.dispose(); model.dispose() },
     }
   }
@@ -100,6 +106,7 @@ export async function loadModelFromText(
     unitScale: 1,
     textureWidth: description?.texture_width ?? 64,
     textureHeight: description?.texture_height ?? 64,
+    materials: [model.material],
     updateTexture: (next) => model.setTexture(next),
     dispose: () => model.dispose(),
   }

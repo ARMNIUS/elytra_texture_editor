@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.14.5 — Unified shader UV grid
+
+- Replaced the per-triangle line geometry for imported models with a single fragment-shader UV grid applied to every model material. It follows the surface at every camera angle, has no seams between faces, and no longer produces doubled lines.
+- The grid uses the model's texture resolution and draws over transparent texels too (alpha is raised only on grid lines), so filled/textureless models keep a visible grid.
+- `.bbmodel` embedded textures are preserved; models with a missing/external texture fall back to the current canvas. Importing a model resizes the canvas to the model texture dimensions, and the resize is undoable.
+- Canvas width/height are stored in undo/redo snapshots.
+- Coordinate floor grid cells are exactly one model pixel and remain a context-menu option.
+- Tests: 140.
+- Installers: RawSprite 0.1.3, RawSprite Minecraft 0.14.5.
+
 ## 0.14.4 — Model texture sizing and one-sided UV grid
 
 - `.bbmodel` embedded textures are preserved instead of being replaced by the current canvas, fixing stretched model textures. Models without an embedded texture (and Bedrock models) still use the canvas.
