@@ -72,30 +72,32 @@ export type ImportedTexture = {
   height: number
 }
 
-export async function readImageFile(
-  file: File,
-  width = TEXTURE_WIDTH,
-  height = TEXTURE_HEIGHT,
-): Promise<ImportedTexture> {
+/**
+ * Reads an image at its native pixel size. Callers place it on the document
+ * canvas explicitly, so importing a small sprite never stretches it to 2048×2048.
+ */
+export async function readImageFile(file: File): Promise<ImportedTexture> {
   const url = URL.createObjectURL(file)
   try {
     const image = new Image()
     image.src = url
     await image.decode()
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
     const context = canvas.getContext('2d', { willReadFrequently: true })!
-    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.clearRect(0, 0, width, height)
     context.imageSmoothingEnabled = false
-    context.drawImage(image, 0, 0, width, height)
+    context.drawImage(image, 0, 0)
     const imageData = context.getImageData(0, 0, width, height).data
     const result: string[] = []
     for (let i = 0; i < imageData.length; i += 4) {
       const [r, g, b, a] = [imageData[i], imageData[i + 1], imageData[i + 2], imageData[i + 3]]
       result.push(a === 0 ? transparentPixel : `#${[r, g, b, ...(a < 255 ? [a] : [])].map(v => v.toString(16).padStart(2, '0')).join('')}`)
     }
-    return { pixels: result, width: image.naturalWidth || image.width, height: image.naturalHeight || image.height }
+    return { pixels: result, width, height }
   } finally {
     URL.revokeObjectURL(url)
   }
@@ -151,6 +153,28 @@ export function paintPoints(
     changed = true
   }
   return changed ? next : pixels
+}
+
+/**
+ * Places a source image at the top-left of a canvas without scaling. Pixels that
+ * fall outside the canvas are clipped; the rest of the canvas stays transparent.
+ */
+export function placePixels(
+  source: string[],
+  sourceWidth: number,
+  sourceHeight: number,
+  width: number,
+  height: number,
+): string[] {
+  const result = Array.from({ length: width * height }, () => transparentPixel)
+  const copyWidth = Math.min(width, sourceWidth)
+  const copyHeight = Math.min(height, sourceHeight)
+  for (let y = 0; y < copyHeight; y++) {
+    for (let x = 0; x < copyWidth; x++) {
+      result[y * width + x] = source[y * sourceWidth + x] ?? transparentPixel
+    }
+  }
+  return result
 }
 
 export type PixelRegion = { width: number; height: number; pixels: string[] }

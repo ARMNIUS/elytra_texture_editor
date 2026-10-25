@@ -50,7 +50,7 @@ type Props = {
   onClearTexture: () => void
 }
 
-const MIN_ZOOM = 2
+const MIN_ZOOM = 0.05
 const MAX_ZOOM = 2048
 
 const uvFaces = [
@@ -187,8 +187,8 @@ export default function TextureCanvas({
     if (!wrapper) return
     const rect = wrapper.getBoundingClientRect()
     const direction = event.deltaY < 0 ? 1 : -1
-    const step = Math.max(1, Math.round(zoom * 0.15))
-    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom + direction * step))
+    const factor = 1.2
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * (direction > 0 ? factor : 1 / factor)))
     if (nextZoom === zoom) return
     zoomAnchor.current = {
       clientX: event.clientX,
@@ -389,7 +389,7 @@ export default function TextureCanvas({
     { label: showGrid ? 'Скрыть сетку пикселей' : 'Показать сетку пикселей', shortcut: shortcuts.toggleGrid, checked: showGrid, action: onToggleGrid },
     { label: showUv ? 'Скрыть UV-шаблон' : 'Показать UV-шаблон', shortcut: shortcuts.toggleUv, checked: showUv, action: onToggleUv },
     { separator: true },
-    { label: 'Масштаб по умолчанию', action: onZoomReset },
+    { label: 'Вписать холст', action: onZoomReset },
   ]
 
   const finishPointer = (commit: boolean) => {
@@ -477,8 +477,8 @@ export default function TextureCanvas({
             onPointerCancel={handlePointerCancel}
             onLostPointerCapture={handlePointerCancel}
           />
-          {showGrid && (
-            <svg className="pixel-grid-overlay" viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true">
+          {showGrid && zoom >= 1 && (
+            <svg className="pixel-grid-overlay" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
               <path
                 d={Array.from({ length: width + 1 }, (_, x) => `M ${x} 0 V ${height}`).join(' ') + ' ' + Array.from({ length: height + 1 }, (_, y) => `M 0 ${y} H ${width}`).join(' ')}
                 vectorEffect="non-scaling-stroke"
@@ -499,7 +499,7 @@ export default function TextureCanvas({
             </svg>
           )}
           {visibleSelection && (
-            <svg className="selection-overlay" viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true">
+            <svg className="selection-overlay" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
               <rect
                 className="selection-fill"
                 x={visibleSelection.x0}
@@ -540,7 +540,7 @@ export default function TextureCanvas({
             </div>
           )}
           {draftShape && (
-            <svg className="shape-preview" viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true" shapeRendering="crispEdges">
+            <svg className="shape-preview" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true" shapeRendering="crispEdges">
               {shapePoints(draftShape)
                 .filter(([x, y]) => containsPoint(selection, x, y))
                 .map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} />)}
@@ -566,7 +566,7 @@ export default function TextureCanvas({
       <div className="canvas-footnote">
         <span>{width} × {height} px</span>
         {width === 64 && height === 32 && <span>UV: 22, 0 → 48, 22</span>}
-        <span>Колесо — масштаб · {zoom * 100}%</span>
+        <span>Колесо — масштаб · {Math.round(zoom * 1000) / 10}%</span>
       </div>
     </div>
   )

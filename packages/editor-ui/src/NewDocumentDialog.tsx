@@ -8,6 +8,8 @@ const PRESETS = [16, 32, 64, 128, 256, 512, 1024, 2048]
 
 type Props = {
   open: boolean
+  defaultWidth?: number
+  defaultHeight?: number
   onCancel: () => void
   onCreate: (width: number, height: number) => void
 }
@@ -17,16 +19,16 @@ function clampSize(value: number): number {
   return Math.max(1, Math.min(2048, Math.round(value)))
 }
 
-export default function NewDocumentDialog({ open, onCancel, onCreate }: Props) {
-  const [width, setWidth] = useState('64')
-  const [height, setHeight] = useState('64')
+export default function NewDocumentDialog({ open, defaultWidth = 64, defaultHeight = 64, onCancel, onCreate }: Props) {
+  const [width, setWidth] = useState(String(defaultWidth))
+  const [height, setHeight] = useState(String(defaultHeight))
   const titleId = useId()
 
   useEffect(() => {
     if (!open) return
-    setWidth('64')
-    setHeight('64')
-  }, [open])
+    setWidth(String(defaultWidth))
+    setHeight(String(defaultHeight))
+  }, [open, defaultWidth, defaultHeight])
 
   useEffect(() => {
     if (!open) return
@@ -54,7 +56,7 @@ export default function NewDocumentDialog({ open, onCancel, onCreate }: Props) {
         onPointerDown={(event) => event.stopPropagation()}
       >
         <div className="confirm-titlebar">
-          <span id={titleId}>Новый спрайт</span>
+          <span id={titleId}>Новый проект</span>
           <button type="button" className="confirm-close" aria-label="Отменить" onClick={onCancel}><X size={11} /></button>
         </div>
         <div className="new-document-body">

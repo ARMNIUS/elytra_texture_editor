@@ -144,7 +144,7 @@ describe('clipboard and layers', () => {
   it('paints the far corner of a custom-sized canvas', async () => {
     renderApp()
     fireEvent.click(screen.getByText('Файл'))
-    fireEvent.click(screen.getByText('Новый спрайт…'))
+    fireEvent.click(screen.getByText('Новый проект…'))
     fireEvent.change(screen.getByLabelText('Ширина холста'), { target: { value: '16' } })
     fireEvent.change(screen.getByLabelText('Высота холста'), { target: { value: '8' } })
     fireEvent.click(screen.getByText('Создать'))

@@ -22,7 +22,7 @@ import type { ShortcutId, ShortcutMap } from '@rawsprite/editor-ui/ShortcutsModa
 import { transparentPixel } from '@rawsprite/core/palettes'
 import { defaultElytraPixels } from '@rawsprite/plugin-minecraft/defaultElytra'
 import {
-  clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelsToPngBlob, readImageFile,
+  clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelsToPngBlob, placePixels, readImageFile,
 } from '@rawsprite/core/texture'
 import type { PixelRegion } from '@rawsprite/core/texture'
 import {
@@ -100,7 +100,7 @@ function createDefaultDocument(filename: string): DocumentState {
 function createBlankDocument(filename: string, width: number, height: number): DocumentState {
   const safeWidth = Math.max(1, Math.min(2048, Math.round(width)))
   const safeHeight = Math.max(1, Math.min(2048, Math.round(height)))
-  const zoom = Math.max(1, Math.min(16, Math.floor(Math.min(960 / safeWidth, 720 / safeHeight))))
+  const zoom = Math.max(0.05, Math.min(16, Math.min(960 / safeWidth, 720 / safeHeight)))
   return createDocument(
     filename,
     [createLayer('Слой 1', undefined, safeWidth, safeHeight)],
@@ -719,18 +719,10 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setStatus(`Проект: ${target.filename}`)
   }, [cancelSelectionTransform, endStroke, floating])
 
-  const newProject = useCallback(() => {
-    const doc = mode === 'rawsprite'
-      ? createBlankDocument(nextUntitledName(documentsRef.current, 'rsp'), 64, 64)
-      : createDefaultDocument(nextUntitledName(documentsRef.current))
-    const next = [...documentsRef.current, doc]
-    documentsRef.current = next
-    setDocuments(next)
-    activateDocument(doc.id)
-  }, [activateDocument])
+  const newProject = useCallback(() => setNewDocumentOpen(true), [])
 
   const newSprite = useCallback((width: number, height: number) => {
-    const doc = createBlankDocument(nextUntitledName(documentsRef.current), width, height)
+    const doc = createBlankDocument(nextUntitledName(documentsRef.current, projectExtension), width, height)
     const next = [...documentsRef.current, doc]
     documentsRef.current = next
     setDocuments(next)
@@ -749,7 +741,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     let next = current.filter((document) => document.id !== id)
     if (!next.length) next = [mode === 'rawsprite'
       ? createBlankDocument('Без названия 1.rsp', 64, 64)
-      : createDefaultDocument('Без названия 1.mts')]
+      : createBlankDocument('Без названия 1.mts', 64, 32)]
     documentsRef.current = next
     setDocuments(next)
     if (activeDocRef.current === id) activateDocument(next[Math.min(index, next.length - 1)].id)
@@ -1227,20 +1219,22 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     const asNewLayer = importModeRef.current === 'new'
     importModeRef.current = 'active'
     try {
-      const imported = await readImageFile(file, width, height)
+      const imported = await readImageFile(file)
+      const placed = placePixels(imported.pixels, imported.width, imported.height, width, height)
+      const tooLarge = imported.width > width || imported.height > height
       const sizeNote = imported.width === width && imported.height === height
         ? `${width}×${height}`
-        : `${imported.width}×${imported.height} растянуто до ${width}×${height}`
+        : `${imported.width}×${imported.height} → ${width}×${height}${tooLarge ? ', обрезано' : ''}`
       pushHistory()
       if (asNewLayer) {
         const current = layersRef.current
         const index = current.findIndex((layer) => layer.id === activeLayerIdRef.current)
         const layerName = file.name.replace(/\.[^.]+$/, '').trim().slice(0, 40) || 'Импорт'
-        const layer = createLayer(layerName, imported.pixels, width, height)
+        const layer = createLayer(layerName, placed, width, height)
         const insertAt = index < 0 ? current.length : index + 1
         applyLayers([...current.slice(0, insertAt), layer, ...current.slice(insertAt)], `Импортировано в новый слой «${layerName}» (${sizeNote})`, layer.id)
       } else {
-        const next = layersRef.current.map((layer) => layer.id === activeLayerIdRef.current ? { ...layer, pixels: imported.pixels } : layer)
+        const next = layersRef.current.map((layer) => layer.id === activeLayerIdRef.current ? { ...layer, pixels: placed } : layer)
         applyLayers(next, `Импортировано в активный слой: ${file.name} (${sizeNote})`)
       }
       setFilename(toPngFilename(file.name))
@@ -1261,7 +1255,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setActiveLayerId(layer.id)
     setSelection(null)
     setClipboard(null)
-    setFilename('untitled-elytra.png')
+    setFilename(mode === 'rawsprite' ? 'Без названия.rsp' : 'untitled-elytra.png')
     setDirty(true)
     setStatus('Новая пустая текстура')
   }
@@ -1288,8 +1282,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   ]
 
   const fileMenu: ContextMenuItem[] = [
-    { label: 'Новый проект', shortcut: shortcuts.newProject, icon: <XpIcon name="newfolder" size={14} />, action: newProject },
-    { label: 'Новый спрайт…', icon: <XpIcon name="bitmap" size={14} />, action: () => setNewDocumentOpen(true) },
+    { label: 'Новый проект…', shortcut: shortcuts.newProject, icon: <XpIcon name="newfolder" size={14} />, action: newProject },
     { label: 'Открыть проект…', shortcut: shortcuts.openProject, icon: <XpIcon name="folder" size={14} />, action: openProject },
     { label: 'Сохранить проект', shortcut: shortcuts.saveProject, icon: <XpIcon name="save" size={14} />, action: () => saveProject() },
     { label: 'Сохранить как…', shortcut: shortcuts.saveProjectAs, icon: <XpIcon name="save" size={14} />, action: saveProjectAs },
@@ -1456,9 +1449,10 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
           {previewAvailable && <button className={`toolbar-action ${showUv ? 'toolbar-action-active' : ''}`} onClick={() => setShowUv((value) => !value)} title={`UV-шаблон (${shortcuts.toggleUv})`}><Eye size={15} /></button>}
           <span className="toolbar-divider" />
           <span className="zoom-label">МАСШТАБ</span>
-          <button className="toolbar-action zoom-step" onClick={() => setZoom((value) => Math.max(2, Math.round(value / 1.2)))} title="Уменьшить масштаб"><ZoomOut size={14} /></button>
-          <span className="zoom-value">{zoom * 100}%</span>
-          <button className="toolbar-action zoom-step" onClick={() => setZoom((value) => Math.min(2048, Math.round(value * 1.2)))} title="Увеличить масштаб"><ZoomIn size={14} /></button>
+          <button className="toolbar-action zoom-step" onClick={() => setZoom((value) => Math.max(0.05, value / 1.2))} title="Уменьшить масштаб"><ZoomOut size={14} /></button>
+          <span className="zoom-value">{Math.round(zoom * 1000) / 10}%</span>
+          <button className="toolbar-action zoom-step" onClick={() => setZoom((value) => Math.min(2048, value * 1.2))} title="Увеличить масштаб"><ZoomIn size={14} /></button>
+          <button className="toolbar-action" onClick={() => setZoom(Math.max(0.05, Math.min(16, Math.min(960 / width, 720 / height))))} title="Вписать холст" aria-label="Вписать холст"><Maximize2 size={14} /></button>
         </div>
         {previewAvailable && <div className="view-switcher" role="group" aria-label="Режим отображения">
           <button onClick={() => switchView('2d')} className={viewMode === '2d' ? 'view-option active' : 'view-option'}><PanelsTopLeft size={14} /> 2D</button>
@@ -1492,7 +1486,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         </aside>
 
         <section className={`editor-area ${viewMode === '3d' ? 'editor-area-hidden' : ''}`}>
-          <div className="panel-topline"><div className="panel-title"><span className="panel-title-dot" /> <span>ТЕКСТУРА</span><span className="panel-subtitle">/ UV ATLAS</span></div><div className="panel-tools">
+          <div className="panel-topline"><div className="panel-title"><span className="panel-title-dot" /> <span>{mode === 'rawsprite' ? 'СПРАЙТ' : 'ТЕКСТУРА'}</span>{mode === 'minecraft' && <span className="panel-subtitle">/ UV ATLAS</span>}</div><div className="panel-tools">
             <span className="active-tool-indicator"><MousePointer2 size={13} /> {activeToolLabel}</span>
             {tool === 'select' && displaySelection && (
               <span className="transform-bar" role="group" aria-label="Трансформация выделения">
@@ -1538,7 +1532,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
             canRedo={future.length > 0}
             onToggleGrid={() => setShowGrid((value) => !value)}
             onToggleUv={() => setShowUv((value) => !value)}
-            onZoomReset={() => setZoom(10)}
+            onZoomReset={() => setZoom(Math.max(0.05, Math.min(16, Math.min(960 / width, 720 / height))))}
             onSetTool={chooseTool}
             onImportTexture={openFile}
             onExportTexture={exportPng}
@@ -1590,7 +1584,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         </aside>
       </main>
       {showShortcuts && <ShortcutsModal shortcuts={shortcuts} onChange={setBinding} onClose={() => setShowShortcuts(false)} onReset={() => { setShortcuts(defaultShortcuts); localStorage.removeItem('mts-shortcuts-v1') }} />}
-      <NewDocumentDialog open={newDocumentOpen} onCancel={() => setNewDocumentOpen(false)} onCreate={newSprite} />
+      <NewDocumentDialog open={newDocumentOpen} defaultWidth={64} defaultHeight={mode === 'rawsprite' ? 64 : 32} onCancel={() => setNewDocumentOpen(false)} onCreate={newSprite} />
       <ConfirmDialog
         open={pendingClose !== null}
         title="Закрытие проекта"

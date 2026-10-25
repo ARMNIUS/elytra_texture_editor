@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.1 — Canvas interaction fixes
+
+- Fixed the grid, selection overlay and shape preview: their SVG `viewBox` was still hard-coded to 64×32 while the canvas had arbitrary dimensions, so everything was scaled and clipped incorrectly on non-64×32 documents.
+- Merged **Новый проект** and **Новый спрайт** into a single **Файл → Новый проект…** dialog. The tab “+” and `Ctrl+N` open the same size dialog; open/save/export remain separate.
+- Texture import no longer stretches the image to the canvas. Images are read at native pixel size and placed at the top-left of the canvas; oversized images are clipped, with the dimensions reported in the status bar. This applies to both “Открыть текстуру” and “Импортировать как новый слой”.
+- Zoom now goes down to 5% (or lower for fitting) and the wheel uses multiplicative steps, so a 2048×2048 canvas can be viewed as a whole. Added a **Вписать холст** toolbar button and context-menu action.
+- New projects open at a fitted zoom; the RawSprite shell shows “СПРАЙТ” instead of the Minecraft “UV ATLAS” label.
+- Tests: 135 (native-size placement, custom-canvas grid coordinates, merged new-project dialog, plus the previous suite).
+- Installers: RawSprite 0.1.1 and RawSprite Minecraft 0.13.1.
+
 ## 0.13.0 — RawSprite split: two applications
 
 - Extracted the framework-agnostic raster core into `@rawsprite/core`: colors, layers, shapes, texture operations, transforms, project validation and shortcuts.

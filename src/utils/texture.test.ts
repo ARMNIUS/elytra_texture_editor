@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { transparentPixel } from '@rawsprite/core/palettes'
-import { clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelIndex, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '@rawsprite/core/texture'
+import { clearRegion, copyRegion, floodFill, paintPoints, pasteRegion, pixelIndex, placePixels, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '@rawsprite/core/texture'
 
 function blankTexture(): string[] {
   return Array.from({ length: TEXTURE_WIDTH * TEXTURE_HEIGHT }, () => transparentPixel)
@@ -135,5 +135,24 @@ describe('selection regions', () => {
 
     const pasted = pasteRegion(pixels, region!, 0, 0, null, 4, 2)
     expect(pasted[0]).toBe('#abcdef')
+  })
+
+  it('places an image at native size without stretching it across the canvas', () => {
+    const source = ['#ff0000', '#00ff00', '#0000ff', '#ffffff']
+    const placed = placePixels(source, 2, 2, 8, 8)
+    expect(placed).toHaveLength(64)
+    expect(placed[0]).toBe('#ff0000')
+    expect(placed[1]).toBe('#00ff00')
+    expect(placed[8]).toBe('#0000ff')
+    expect(placed[9]).toBe('#ffffff')
+    expect(placed[10]).toBe(transparentPixel)
+    expect(placed[63]).toBe(transparentPixel)
+  })
+
+  it('clips an oversized image when placing it on a smaller canvas', () => {
+    const source = Array.from({ length: 4 * 4 }, () => '#abcdef')
+    const placed = placePixels(source, 4, 4, 2, 2)
+    expect(placed).toHaveLength(4)
+    expect(placed.every((pixel) => pixel === '#abcdef')).toBe(true)
   })
 })

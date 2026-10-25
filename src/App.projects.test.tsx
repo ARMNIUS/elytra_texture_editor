@@ -24,6 +24,21 @@ function canvasElement(): HTMLCanvasElement {
   return screen.getByLabelText('64 by 32 pixel texture canvas') as HTMLCanvasElement
 }
 
+function openNewProject() {
+  fireEvent.click(screen.getByLabelText('Новый проект'))
+}
+
+function confirmNewProject() {
+  fireEvent.click(screen.getByText('Создать'))
+}
+
+function createProject(width = 64, height = 32) {
+  openNewProject()
+  fireEvent.change(screen.getByLabelText('Ширина холста'), { target: { value: String(width) } })
+  fireEvent.change(screen.getByLabelText('Высота холста'), { target: { value: String(height) } })
+  confirmNewProject()
+}
+
 function drag(canvas: HTMLCanvasElement, from: [number, number], to: [number, number]) {
   fireEvent.pointerDown(canvas, { pointerId: 1, button: 0, buttons: 1, clientX: from[0], clientY: from[1] })
   fireEvent.pointerMove(canvas, { pointerId: 1, buttons: 1, clientX: to[0], clientY: to[1] })
@@ -84,7 +99,7 @@ describe('multiple projects', () => {
     expect(tabs(container)).toHaveLength(1)
     expect(activeTabName(container)).toBe('elytra.png')
 
-    fireEvent.click(screen.getByLabelText('Новый проект'))
+    createProject()
     expect(tabs(container)).toHaveLength(2)
     expect(activeTabName(container)).toBe('Без названия 1.mts')
     expect((container.querySelector('.document-title input') as HTMLInputElement).value).toBe('Без названия 1.mts')
@@ -94,6 +109,7 @@ describe('multiple projects', () => {
   it('supports Ctrl+N and Ctrl+Tab', () => {
     const { container } = renderApp()
     fireEvent.keyDown(window, { key: 'n', ctrlKey: true })
+    confirmNewProject()
     expect(tabs(container)).toHaveLength(2)
 
     fireEvent.keyDown(window, { key: 'Tab', ctrlKey: true })
@@ -108,7 +124,7 @@ describe('multiple projects', () => {
 
     // Tab 1: paint one pixel at (5, 5).
     drag(canvas, [50, 50], [50, 50])
-    fireEvent.click(screen.getByLabelText('Новый проект'))
+    createProject()
     // Tab 2: paint a different pixel at (20, 20).
     drag(canvas, [200, 200], [200, 200])
 
@@ -162,11 +178,12 @@ describe('multiple projects', () => {
     expect(project.layers[0].pixels).toHaveLength(2048)
   })
 
-  it('loads the default elytra texture into a new project', async () => {
+  it('creates a blank project from the size dialog', async () => {
     renderApp()
-    fireEvent.click(screen.getByLabelText('Новый проект'))
+    createProject()
     const project = await saveProject()
-    expect(project.layers[0].pixels.filter((pixel) => !pixel.endsWith('00')).length).toBeGreaterThan(100)
+    expect(project.layers[0].pixels).toHaveLength(2048)
+    expect(project.layers[0].pixels.every((pixel) => pixel === TRAIT)).toBe(true)
   })
 
   it('saves with Ctrl+S and Ctrl+Shift+S even on a Russian layout', () => {

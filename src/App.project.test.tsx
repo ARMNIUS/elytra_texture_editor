@@ -77,7 +77,7 @@ describe('project documents', () => {
   it('creates a custom-sized sprite and saves its dimensions', async () => {
     const { container } = renderApp()
     fireEvent.click(screen.getByText('Файл'))
-    fireEvent.click(screen.getByText('Новый спрайт…'))
+    fireEvent.click(screen.getByText('Новый проект…'))
     fireEvent.change(screen.getByLabelText('Ширина холста'), { target: { value: '128' } })
     fireEvent.change(screen.getByLabelText('Высота холста'), { target: { value: '256' } })
     fireEvent.click(screen.getByText('Создать'))
@@ -129,6 +129,7 @@ describe('project documents', () => {
     expect(container.textContent).toContain('Проект загружен: sprite-16x8.mts')
     expect((container.querySelector('.pixel-canvas') as HTMLCanvasElement).width).toBe(16)
     expect((container.querySelector('.pixel-canvas') as HTMLCanvasElement).height).toBe(8)
+    expect(container.querySelector('.pixel-grid-overlay')?.getAttribute('viewBox')).toBe('0 0 16 8')
   })
 
   it('loads a version 1 document into a single layer', async () => {
