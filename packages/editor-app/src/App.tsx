@@ -670,7 +670,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         `Выделение трансформировано: ${rect.width}×${rect.height}`,
       )
     }
-    setSelection(blockSelection(scaled, rect.x, rect.y))
+    setSelection(blockSelection(scaled, rect.x, rect.y, width, height))
     transformSnapshotRef.current = null
     setFloating(null)
   }, [applyLayers, floating, getActivePixels, restoreTransformSnapshot, width, height, historyLimit])
@@ -698,8 +698,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       }
       applyLayers(layersRef.current.map((layer, layerIndex) => layerIndex === index ? { ...layer, pixels: baked } : layer), labels[kind])
     }
-    setSelection(blockSelection(nextBlock, x, y))
-  }, [applyLayers, getActivePixels, pushHistory, requireEditableActiveLayer, selection])
+    setSelection(blockSelection(nextBlock, x, y, width, height))
+  }, [applyLayers, getActivePixels, pushHistory, requireEditableActiveLayer, selection, width, height])
 
   // ----- documents / tabs --------------------------------------------------
 

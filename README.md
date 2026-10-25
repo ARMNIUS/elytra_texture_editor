@@ -13,8 +13,8 @@ The application layer is now split into separate bundles:
 
 | App | Bundle | Installer |
 |---|---|---|
-| RawSprite | ~390 KB JS | `RawSprite 0.1.1 setup.exe` |
-| RawSprite Minecraft | ~920 KB JS (three.js + skinview3d) | `RawSprite Minecraft 0.13.1 setup.exe` |
+| RawSprite | ~390 KB JS | `RawSprite 0.1.2 setup.exe` |
+| RawSprite Minecraft | ~920 KB JS (three.js + skinview3d) | `RawSprite Minecraft 0.13.2 setup.exe` |
 
 RawSprite does not import `three`, `skinview3d` or `ElytraViewer`. The Minecraft app injects `ElytraViewer` as a preview component.
 
@@ -72,8 +72,8 @@ docs/                     # architecture and release notes
 Built locally (unsigned):
 
 ```text
-apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.1_x64-setup.exe
-apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.13.1_x64-setup.exe
+apps/rawsprite/src-tauri/target/release/bundle/nsis/RawSprite_0.1.2_x64-setup.exe
+apps/rawsprite-minecraft/src-tauri/target/release/bundle/nsis/RawSprite Minecraft_0.13.2_x64-setup.exe
 ```
 
 SmartScreen will warn because the installers are unsigned: choose **«Подробнее» → «Выполнить в любом случае»**.
@@ -99,6 +99,6 @@ npm run tauri --workspace=@rawsprite/app-minecraft -- build --bundles nsis
 
 ## Verification
 
-`npm run typecheck`, `npm test` (**135 checks**) and `npm run build` pass. The suite covers flood fill, layer compositing/merging/reordering, shapes including the Aseprite ellipse, color conversion, project validation and migration, multi-project tabs, shortcut migration/layout independence, palette locking and duplicate swatches, value-zero HSV retention, arbitrary canvas creation/load/save/painting, selection transforms, clipboard layers, a Minecraft-free RawSprite smoke render, and a full server-rendered shell.
+`npm run typecheck`, `npm test` (**136 checks**) and `npm run build` pass. The suite covers flood fill, layer compositing/merging/reordering, shapes including the Aseprite ellipse, color conversion, project validation and migration, multi-project tabs, shortcut migration/layout independence, palette locking and duplicate swatches, value-zero HSV retention, arbitrary canvas creation/load/save/painting, selection transforms, clipboard layers, a Minecraft-free RawSprite smoke render, and a full server-rendered shell.
 
 Native dialogs and Tauri file writes compile; the desktop GUI cannot be launched from the agent shell, so installers should be smoke-tested manually on Windows.

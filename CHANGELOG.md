@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.2 — Selection transform fix
+
+- Fixed the selection shrinking after a move/stretch on canvases larger than 64×32. The transform commit recalculated the selection with `blockSelection(scaled, x, y)` but omitted the document width/height, so it clipped to the legacy defaults and shrank on every drag.
+- Both `commitSelectionTransform` and the rotate/flip `transformSelection` path now pass the real canvas dimensions.
+- Added a regression test: a 20×20 selection on 128×64 survives two consecutive drags at 20×20.
+- Tests: 136.
+- Installers: RawSprite 0.1.2 and RawSprite Minecraft 0.13.2.
+
 ## 0.13.1 — Canvas interaction fixes
 
 - Fixed the grid, selection overlay and shape preview: their SVG `viewBox` was still hard-coded to 64×32 while the canvas had arbitrary dimensions, so everything was scaled and clipped incorrectly on non-64×32 documents.

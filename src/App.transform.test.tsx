@@ -159,4 +159,27 @@ describe('selection transform', () => {
     const after = await saveProject()
     expect(after.layers[0].pixels).toEqual(before.layers[0].pixels)
   })
+
+  it('keeps the selection size when dragging it repeatedly on a large canvas', () => {
+    const { container } = renderApp()
+    fireEvent.click(screen.getByLabelText('Новый проект'))
+    fireEvent.change(screen.getByLabelText('Ширина холста'), { target: { value: '128' } })
+    fireEvent.change(screen.getByLabelText('Высота холста'), { target: { value: '64' } })
+    fireEvent.click(screen.getByText('Создать'))
+
+    const canvas = screen.getByLabelText('128 by 64 pixel texture canvas') as HTMLCanvasElement
+    const wrapper = container.querySelector('.pixel-canvas-wrap') as HTMLDivElement
+    const rect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 960, bottom: 480, width: 960, height: 480, toJSON: () => ({}) })
+    canvas.getBoundingClientRect = vi.fn(rect) as unknown as typeof canvas.getBoundingClientRect
+    wrapper.getBoundingClientRect = vi.fn(rect)
+    fireEvent.click(screen.getByTitle('Выделение (M)'))
+    // Fit zoom for 128×64 is 7.5 CSS px per texture pixel.
+    drag(canvas, [600, 300], [749, 449])
+    expect(selectionLabel(container)).toContain('20×20')
+
+    drag(canvas, [630, 330], [637, 337])
+    expect(selectionLabel(container)).toContain('20×20')
+    drag(canvas, [637, 337], [645, 345])
+    expect(selectionLabel(container)).toContain('20×20')
+  })
 })
