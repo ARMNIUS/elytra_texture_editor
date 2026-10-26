@@ -7,7 +7,7 @@ Two desktop pixel editors built from one shared raster core:
 
 The interface uses a Windows 95/98 / early XP visual language: grey panels, bevelled controls, blue title strips and custom context menus.
 
-## Status — 0.13 split
+## Status — plugin host v1
 
 The application layer is now split into separate bundles:
 
