@@ -15,6 +15,8 @@ describe('file names', () => {
   it('builds project and PNG names from the texture name', () => {
     expect(toProjectName('elytra.png')).toBe('elytra.mts')
     expect(toProjectName('wing.mts')).toBe('wing.mts')
+    expect(toProjectName('sprite.rsp', 'rsp')).toBe('sprite.rsp')
     expect(toPngName('wing.mts')).toBe('wing.png')
+    expect(toPngName('sprite.rsp')).toBe('sprite.png')
   })
 })

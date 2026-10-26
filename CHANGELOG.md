@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.0 / RawSprite 0.1.8 — Plugin host and stability
+
+- Fixed 3D painting and the elytra pixel grid/bounds after the two-three.js-copies regression. Mesh collection now uses the structural `isMesh` flag, the grid is a shader patch on skinview3d's own material, and bounds are thin box bars built with the wing's own constructors.
+- Closing the application now saves every dirty tab, not just the active one. Closing a dirty tab saves that specific tab. Cancelling or failing any save keeps the window open.
+- RawSprite keeps its 64×64 `.rsp` default when the last tab is closed. Project zoom is restored without the old 200% floor. Importing into a saved project no longer renames it or hides its save path; clearing the texture keeps the project name.
+- `.rsp` is stripped from PNG names, and app-specific `.mts` labels were removed from the shortcut list; palette export uses the RawSprite name.
+- Project JSON round-trips an opaque `extensions` object for plugin data.
+- Added the plugin host v1 with isolated activation/rollback, scoped event/storage APIs, contribution registries and change notifications. The editor shows plugin menu items and executes their commands.
+- Tests: 158 (cross-version mesh collection, save-all close, project extensions and plugin host/menu coverage).
+- Installers: RawSprite 0.1.8, RawSprite Minecraft 0.15.0.
+
 ## 0.14.9 / RawSprite 0.1.7 — Icon set rollback
 
 - Rolled the UI and native app icons back to the previous Lucide/XP icon set. The Windows 98 icon experiment was reverted.

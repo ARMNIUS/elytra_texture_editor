@@ -10,7 +10,8 @@
     "./defaultElytra": "./src/defaultElytra.ts",
     "./MinecraftPreview": "./src/MinecraftPreview.tsx",
     "./ModelPreview": "./src/ModelPreview.tsx",
-    "./modelLoader": "./src/modelLoader.ts"
+    "./modelLoader": "./src/modelLoader.ts",
+    "./meshUtils": "./src/meshUtils.ts"
   },
   "dependencies": {
     "three-blockbench": "^0.1.0",

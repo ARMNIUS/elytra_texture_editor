@@ -36,7 +36,7 @@ export function toProjectName(name: string, extension = 'mts'): string {
 }
 
 export function toPngName(name: string): string {
-  const base = name.replace(/\.(png|mts|json)$/i, '').trim()
+  const base = name.replace(/\.(png|mts|rsp|json)$/i, '').trim()
   return `${base || 'untitled'}.png`
 }
 

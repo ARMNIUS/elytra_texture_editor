@@ -91,7 +91,7 @@ async function parsePaletteFile(file: File): Promise<Palette> {
 }
 
 function buildGpl(palette: Palette): { filename: string; content: string } {
-  const lines = ['GIMP Palette', `Name: ${palette.name}`, 'Columns: 8', '# Exported from Minecraft Texture Studio']
+  const lines = ['GIMP Palette', `Name: ${palette.name}`, 'Columns: 8', '# Exported from RawSprite']
   for (const color of palette.colors) {
     const rgb = hexToRgb(color)
     lines.push(`${String(rgb.r).padStart(3, ' ')} ${String(rgb.g).padStart(3, ' ')} ${String(rgb.b).padStart(3, ' ')} ${color.toUpperCase()}`)

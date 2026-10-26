@@ -1,11 +1,14 @@
 import React from 'react'
 import { useEffect, useRef } from 'react'
 import * as skinview3d from 'skinview3d'
-import { BufferGeometry, EdgesGeometry, LineBasicMaterial, LineSegments, Mesh, Raycaster, Vector2 } from 'three'
+import { DoubleSide, Raycaster, Vector2 } from 'three'
+import type { Material, Mesh, MeshStandardMaterial } from 'three'
 import { Paintbrush, Grid2X2, ScanLine, PersonStanding, RotateCw } from 'lucide-react'
 import { useContextMenu } from '@rawsprite/editor-ui/ContextMenu'
 import { createTextureCanvas, pixelIndex } from '@rawsprite/core/texture'
-import { makeUvGridGeometry } from './uvGrid'
+import { collectMeshObjects } from './meshUtils'
+import { installModelGrid } from './modelGrid'
+import type { ModelGridHandle } from './modelGrid'
 import { transparentPixel } from '@rawsprite/core/palettes'
 import defaultSkinUrl from './assets/steve.png'
 import type { ToolId } from '@rawsprite/editor-ui/types'
@@ -45,8 +48,8 @@ export default function ElytraViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewerRef = useRef<skinview3d.SkinViewer | null>(null)
   const wingMeshesRef = useRef<Mesh[]>([])
-  const edgeLinesRef = useRef<LineSegments[]>([])
-  const gridLinesRef = useRef<LineSegments[]>([])
+  const boundsMeshesRef = useRef<Mesh[]>([])
+  const gridHandlesRef = useRef<ModelGridHandle[]>([])
   const strokeRef = useRef<{ lastPixel: [number, number] | null; color: string; painting: boolean }>({ lastPixel: null, color, painting: false })
   const rightPressRef = useRef<{ pixel: [number, number]; clientX: number; clientY: number } | null>(null)
   const rightDragRef = useRef(false)
@@ -74,41 +77,80 @@ export default function ElytraViewer({
     viewer.zoom = 0.72
     viewerRef.current = viewer
 
-    const wingMeshes: Mesh[] = []
-    viewer.playerObject.elytra.traverse((object) => {
-      if (object instanceof Mesh) wingMeshes.push(object)
-    })
-    const edgeLines: LineSegments[] = []
-    const gridLines: LineSegments[] = []
-    for (const object of wingMeshes) {
-      const edgeMaterial = new LineBasicMaterial({ color: 0xd9e8fa, transparent: true, opacity: 0.86, depthTest: false })
-      const edgeLinesGeometry = new EdgesGeometry(object.geometry as BufferGeometry, 1)
-      const line = new LineSegments(edgeLinesGeometry, edgeMaterial)
-      line.name = 'mts-model-boundaries'
-      line.renderOrder = 6
-      object.add(line)
-      edgeLines.push(line)
+    // Do not use `instanceof Mesh`: skinview3d renders with its own nested three
+    // copy, so its meshes are instances of a different Mesh constructor.
+    const wingMeshes = collectMeshObjects(viewer.playerObject.elytra)
 
-      const gridMaterial = new LineBasicMaterial({
-        // Thin, semi-transparent pixel grid that reads on both the light and dark wing panels.
-        color: 0xeaf4ff, transparent: true, opacity: 0.38,
-        depthTest: true, depthWrite: false, toneMapped: false,
-      })
-      const gridGeometry = makeUvGridGeometry(object.geometry as BufferGeometry, 0.008, width, height)
-      const gridLine = new LineSegments(gridGeometry, gridMaterial)
-      gridLine.name = 'mts-pixel-grid-lines'
-      // The lines are generated in this mesh's local coordinate space, then
-      // attached as a child so they follow the exact wing transforms.
-      gridLine.renderOrder = 8
-      gridLine.visible = interactionRef.current.showGrid
-      object.add(gridLine)
-      gridLines.push(gridLine)
+    // Overlay objects must be created with skinview3d's own three copy. Building
+    // LineSegments from the workspace three and adding them to this scene crashes
+    // the r156 renderer while compiling the r186 line material. Instead, build the
+    // bounding box from thin BoxGeometry bars using the wing's own constructors.
+    const boundsMeshes: Mesh[] = []
+    for (const object of wingMeshes) {
+      const material = Array.isArray(object.material) ? object.material[0] : object.material
+      const geometry = object.geometry as Mesh['geometry']
+      if (!material || geometry.type !== 'BoxGeometry') continue
+      geometry.computeBoundingBox()
+      const box = (geometry as unknown as { boundingBox?: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } }).boundingBox
+      if (!box) continue
+      const width = Math.max(0.001, box.max.x - box.min.x)
+      const height = Math.max(0.001, box.max.y - box.min.y)
+      const depth = Math.max(0.001, box.max.z - box.min.z)
+      const thickness = Math.max(0.02, Math.min(width, height, depth) * 0.035)
+      const centerX = (box.min.x + box.max.x) / 2
+      const centerY = (box.min.y + box.max.y) / 2
+      const centerZ = (box.min.z + box.max.z) / 2
+      const outlineMaterial = material.clone() as MeshStandardMaterial
+      outlineMaterial.wireframe = false
+      outlineMaterial.map = null
+      outlineMaterial.color.setHex(0xffc44d)
+      outlineMaterial.emissive.setHex(0xffc44d)
+      outlineMaterial.emissiveIntensity = 0.9
+      outlineMaterial.transparent = true
+      outlineMaterial.opacity = 0.85
+      outlineMaterial.depthTest = true
+      outlineMaterial.depthWrite = false
+      outlineMaterial.side = DoubleSide
+      outlineMaterial.toneMapped = false
+      outlineMaterial.needsUpdate = true
+      const BoxGeometryCtor = geometry.constructor as unknown as new (width: number, height: number, depth: number) => Mesh['geometry']
+      const WingMeshCtor = object.constructor as unknown as new (geometry: Mesh['geometry'], material: Material) => Mesh
+      const edges: Array<{ size: [number, number, number]; position: [number, number, number] }> = []
+      for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        edges.push({ size: [width, thickness, thickness], position: [centerX, y, z] })
+      }
+      for (const x of [box.min.x, box.max.x]) for (const z of [box.min.z, box.max.z]) {
+        edges.push({ size: [thickness, height, thickness], position: [x, centerY, z] })
+      }
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
+        edges.push({ size: [thickness, thickness, depth], position: [x, y, centerZ] })
+      }
+      for (const edge of edges) {
+        const bar = new WingMeshCtor(new BoxGeometryCtor(...edge.size), outlineMaterial)
+        bar.position.set(...edge.position)
+        bar.name = 'mts-model-boundaries'
+        bar.renderOrder = 6
+        bar.visible = interactionRef.current.showBounds
+        object.add(bar)
+        boundsMeshes.push(bar)
+      }
     }
+
+    // The pixel grid is a shader patch on the wing material, not line geometry.
+    // It therefore uses the r156 material/renderer consistently and survives the
+    // multi-version three setup without touching the scene graph.
+    const gridHandles: ModelGridHandle[] = []
+    const gridMaterials = new Set<Material>()
+    for (const object of wingMeshes) {
+      const material = Array.isArray(object.material) ? object.material[0] : object.material
+      if (!material || gridMaterials.has(material)) continue
+      gridMaterials.add(material)
+      gridHandles.push(installModelGrid(material, width, height, interactionRef.current.showGrid, { preserveMaterial: true }))
+    }
+
     wingMeshesRef.current = wingMeshes
-    edgeLinesRef.current = edgeLines
-    // The toggle effect iterates this ref; forgetting to assign it made the 3D grid
-    // switch appear to do nothing.
-    gridLinesRef.current = gridLines
+    boundsMeshesRef.current = boundsMeshes
+    gridHandlesRef.current = gridHandles
 
     const observer = new ResizeObserver(() => {
       const width = hostRef.current?.clientWidth ?? 0
@@ -122,25 +164,19 @@ export default function ElytraViewer({
 
     return () => {
       observer.disconnect()
-      gridLines.forEach((line) => {
-        line.parent?.remove(line)
-        line.geometry.dispose()
-        const material = line.material
-        if (Array.isArray(material)) material.forEach((item) => item.dispose())
-        else material.dispose()
-      })
-      edgeLines.forEach((line) => {
-        line.parent?.remove(line)
-        line.geometry.dispose()
-        const material = line.material
+      gridHandles.forEach((handle) => handle.dispose())
+      boundsMeshes.forEach((mesh) => {
+        mesh.parent?.remove(mesh)
+        mesh.geometry.dispose()
+        const material = mesh.material
         if (Array.isArray(material)) material.forEach((item) => item.dispose())
         else material.dispose()
       })
       viewer.dispose()
       viewerRef.current = null
       wingMeshesRef.current = []
-      edgeLinesRef.current = []
-      gridLinesRef.current = []
+      boundsMeshesRef.current = []
+      gridHandlesRef.current = []
     }
   }, [])
 
@@ -149,13 +185,19 @@ export default function ElytraViewer({
   }, [autoRotate])
 
   useEffect(() => {
-    edgeLinesRef.current.forEach((line) => { line.visible = showBounds })
+    boundsMeshesRef.current.forEach((mesh) => { mesh.visible = showBounds })
+    viewerRef.current?.render()
   }, [showBounds])
 
   useEffect(() => {
-    gridLinesRef.current.forEach((line) => { line.visible = showGrid })
+    gridHandlesRef.current.forEach((handle) => handle.setVisible(showGrid))
     viewerRef.current?.render()
   }, [showGrid])
+
+  useEffect(() => {
+    gridHandlesRef.current.forEach((handle) => handle.setSize(width, height))
+    viewerRef.current?.render()
+  }, [width, height])
 
   useEffect(() => {
     if (!visible) return

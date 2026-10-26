@@ -7,6 +7,11 @@ export type ModelGridHandle = {
   dispose: () => void
 }
 
+export type ModelGridOptions = {
+  /** Keep the material's alpha/cutout settings (used by skinview3d's elytra material). */
+  preserveMaterial?: boolean
+}
+
 type GridShader = {
   uniforms: Record<string, { value: unknown }>
 }
@@ -16,7 +21,7 @@ type GridShader = {
  * generated in the fragment shader from the mesh's raw UVs, so it follows the
  * surface at every camera angle and cannot develop seams between faces.
  */
-export function installModelGrid(material: Material, width: number, height: number, visible: boolean): ModelGridHandle {
+export function installModelGrid(material: Material, width: number, height: number, visible: boolean, options: ModelGridOptions = {}): ModelGridHandle {
   const state = {
     shader: null as GridShader | null,
     visible,
@@ -25,9 +30,11 @@ export function installModelGrid(material: Material, width: number, height: numb
   }
   const previousCompile = material.onBeforeCompile
   const previousKey = material.customProgramCacheKey
-  if ('alphaTest' in material) (material as { alphaTest: number }).alphaTest = 0
-  if ('transparent' in material) (material as { transparent: boolean }).transparent = true
-  if ('depthWrite' in material) (material as { depthWrite: boolean }).depthWrite = true
+  if (!options.preserveMaterial) {
+    if ('alphaTest' in material) (material as { alphaTest: number }).alphaTest = 0
+    if ('transparent' in material) (material as { transparent: boolean }).transparent = true
+    if ('depthWrite' in material) (material as { depthWrite: boolean }).depthWrite = true
+  }
   material.defines = { ...(material.defines ?? {}), USE_UV: '' }
   material.onBeforeCompile = (shader, renderer) => {
     previousCompile?.call(material, shader, renderer)

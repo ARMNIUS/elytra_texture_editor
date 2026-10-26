@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { ContextMenuProvider } from './components/ContextMenu'
@@ -155,6 +156,71 @@ describe('project documents', () => {
     expect(container.textContent).toContain('Заливка')
   })
 
+  it('restores a saved zoom below 100%', async () => {
+    const { container } = renderApp()
+    const document = {
+      format: 'minecraft-texture-studio-project',
+      version: 3,
+      filename: 'tiny.mts',
+      width: 16,
+      height: 8,
+      activeLayerId: 'layer-a',
+      layers: [{
+        id: 'layer-a',
+        name: 'Слой 1',
+        visible: true,
+        opacity: 100,
+        pixels: Array.from({ length: 16 * 8 }, () => '#123456'),
+      }],
+      settings: { currentColor: '#123456', tool: 'brush', viewMode: '2d', zoom: 0.5 },
+      shortcuts: {},
+      palettes: { userPalettes: [], savedColors: [], activePalette: 'Minecraft · Classic' },
+    }
+    const file = new File([JSON.stringify(document)], 'tiny.mts', { type: 'application/json' })
+    fireEvent.change(projectInput(container), { target: { files: [file] } })
+
+    await waitFor(() => expect(container.textContent).toContain('Проект загружен: tiny.mts'))
+    expect(container.querySelector('.zoom-value')?.textContent).toBe('50%')
+    const wrap = container.querySelector('.pixel-canvas-wrap') as HTMLElement
+    expect(wrap.style.width).toBe('8px')
+    expect(wrap.style.height).toBe('4px')
+  })
+  it('round-trips plugin extensions without interpreting them', async () => {
+    const { container } = renderApp()
+    const extensions = {
+      minecraft: { model: 'stone', textureSlots: { skin: 'doc-a' } },
+      'another.plugin': { anything: [1, 2, 3] },
+    }
+    const document = {
+      format: 'minecraft-texture-studio-project',
+      version: 3,
+      filename: 'extended.mts',
+      width: 8,
+      height: 8,
+      activeLayerId: 'layer-a',
+      layers: [{
+        id: 'layer-a',
+        name: 'Слой 1',
+        visible: true,
+        opacity: 100,
+        pixels: Array.from({ length: 64 }, () => '#123456'),
+      }],
+      settings: { currentColor: '#123456', tool: 'brush', viewMode: '2d' },
+      shortcuts: {},
+      palettes: { userPalettes: [], savedColors: [], activePalette: 'Minecraft · Classic' },
+      extensions,
+    }
+    const file = new File([JSON.stringify(document)], 'extended.mts', { type: 'application/json' })
+    fireEvent.change(projectInput(container), { target: { files: [file] } })
+    await waitFor(() => expect(container.textContent).toContain('Проект загружен: extended.mts'))
+
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true })
+    const createObjectURL = URL.createObjectURL as unknown as Mock
+    const blob = createObjectURL.mock.calls.at(-1)?.[0] as Blob
+    const saved = JSON.parse(await blob.text()) as { version: number; extensions: unknown }
+    expect(saved.version).toBe(3)
+    expect(saved.extensions).toEqual(extensions)
+  })
   it('rejects a document with a broken layer payload', async () => {
     const { container } = renderApp()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

@@ -6,9 +6,9 @@
  * intentionally framework-agnostic: no React or three.js types leak into it.
  */
 
-export const PLUGIN_API_VERSION = 1 as const
+import type { PluginApiVersion } from './version'
 
-export type PluginApiVersion = typeof PLUGIN_API_VERSION
+export * from './version'
 
 export type Disposable = {
   dispose(): void
@@ -195,3 +195,5 @@ export interface EditorPlugin {
 }
 
 export type PluginFactory = () => EditorPlugin
+
+export * from './host'

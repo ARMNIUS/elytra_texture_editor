@@ -20,6 +20,14 @@ function renderApp() {
   )
 }
 
+function renderRawSprite() {
+  return render(
+    <ContextMenuProvider>
+      <App mode="rawsprite" />
+    </ContextMenuProvider>,
+  )
+}
+
 function canvasElement(): HTMLCanvasElement {
   return screen.getByLabelText('64 by 32 pixel texture canvas') as HTMLCanvasElement
 }
@@ -171,6 +179,23 @@ describe('multiple projects', () => {
     expect(activeTabName(container)).toBe('Без названия 1.mts')
   })
 
+  it('restores RawSprite defaults after closing its last tab', () => {
+    const { container } = renderRawSprite()
+    expect(activeTabName(container)).toBe('Без названия 1.rsp')
+    const firstCanvas = screen.getByLabelText('64 by 64 pixel texture canvas') as HTMLCanvasElement
+    drag(firstCanvas, [50, 50], [50, 50])
+
+    fireEvent.click(screen.getByLabelText('Закрыть Без названия 1.rsp'))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Не сохранять' }))
+
+    // RawSprite must not fall back to the Minecraft 64×32 .mts document.
+    expect(tabs(container)).toHaveLength(1)
+    expect(activeTabName(container)).toBe('Без названия 1.rsp')
+    const nextCanvas = screen.getByLabelText('64 by 64 pixel texture canvas') as HTMLCanvasElement
+    expect(nextCanvas.width).toBe(64)
+    expect(nextCanvas.height).toBe(64)
+  })
+
   it('starts with the bundled elytra texture', async () => {
     renderApp()
     const project = await saveProject()
@@ -199,10 +224,13 @@ describe('multiple projects', () => {
 
   it('clears the texture without opening a browser confirm', () => {
     const confirmSpy = vi.spyOn(window, 'confirm')
-    renderApp()
+    const { container } = renderApp()
+    expect(activeTabName(container)).toBe('elytra.png')
     fireEvent.click(screen.getByTitle('Новая пустая текстура'))
     expect(confirmSpy).not.toHaveBeenCalled()
     expect(screen.queryByRole('alertdialog')).toBeNull()
+    // Clearing pixels is not a new document: keep the project name/path.
+    expect(activeTabName(container)).toBe('elytra.png')
   })
 
   it('opens a project in a new tab when the current one is dirty', async () => {

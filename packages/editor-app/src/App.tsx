@@ -42,6 +42,8 @@ import {
   saveBlobInBrowser, toPngName, toProjectName, writeBinaryFile, writeTextFile,
 } from '@rawsprite/editor-ui/files'
 import type { BrowserFileHandle } from '@rawsprite/editor-ui/files'
+import { createPluginHost } from '@rawsprite/plugin-api'
+import type { EditorPlugin, MenuArea, PluginHost } from '@rawsprite/plugin-api'
 
 import type { ToolId } from '@rawsprite/editor-ui/types'
 export type { ToolId } from '@rawsprite/editor-ui/types'
@@ -50,7 +52,14 @@ type AppMode = 'rawsprite' | 'minecraft'
 /** The Minecraft app injects ElytraViewer; the base app passes no preview at all. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PreviewComponent = ComponentType<any>
-type AppProps = { mode?: AppMode; previewComponent?: PreviewComponent | null }
+type AppProps = {
+  mode?: AppMode
+  previewComponent?: PreviewComponent | null
+  /** Static build-time plugins. The array must be stable between renders. */
+  plugins?: EditorPlugin[]
+}
+
+const NO_PLUGINS: EditorPlugin[] = []
 
 type Snapshot = { layers: Layer[]; activeLayerId: string; width: number; height: number }
 
@@ -69,6 +78,8 @@ type DocumentState = {
   skinFilename: string
   zoom: number
   projectPath: string | null
+  /** Opaque plugin-owned data persisted with the document. */
+  extensions: Record<string, unknown>
 }
 
 function createDocument(filename: string, layers?: Layer[], overrides: Partial<DocumentState> = {}): DocumentState {
@@ -90,6 +101,7 @@ function createDocument(filename: string, layers?: Layer[], overrides: Partial<D
     skinFilename: '',
     zoom: 10,
     projectPath: null,
+    extensions: {},
     ...overrides,
   }
 }
@@ -173,6 +185,8 @@ type ProjectFileV2 = {
   settings: ProjectSettings
   shortcuts: ShortcutMap
   palettes: { userPalettes: unknown; savedColors: unknown; activePalette: string }
+  /** Opaque plugin-owned data; the core only round-trips it. */
+  extensions: Record<string, unknown>
 }
 
 function readLocalJson(key: string, fallback: unknown): unknown {
@@ -180,11 +194,6 @@ function readLocalJson(key: string, fallback: unknown): unknown {
     const value = localStorage.getItem(key)
     return value === null ? fallback : JSON.parse(value) as unknown
   } catch { return fallback }
-}
-
-function toPngFilename(name: string): string {
-  const base = name.replace(/\.(png|mts|json)$/i, '').trim()
-  return `${base || 'elytra-texture'}.png`
 }
 
 function readProjectSelection(value: unknown, width: number, height: number): SelectionRect | null {
@@ -196,6 +205,11 @@ function readProjectSelection(value: unknown, width: number, height: number): Se
   const x1 = Math.max(0, Math.min(width - 1, Math.round(rect.x1 as number)))
   const y1 = Math.max(0, Math.min(height - 1, Math.round(rect.y1 as number)))
   return x1 >= x0 && y1 >= y0 ? { x0, y0, x1, y1 } : null
+}
+
+function readExtensions(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  return { ...(value as Record<string, unknown>) }
 }
 
 function toToolId(value: unknown): ToolId | null {
@@ -224,7 +238,7 @@ function shortcutMatches(event: KeyboardEvent, shortcut: string): boolean {
   return key === targetKey && Boolean(event.ctrlKey || event.metaKey) === wantsCtrl && event.altKey === wantsAlt && event.shiftKey === wantsShift
 }
 
-export default function App({ mode = 'minecraft', previewComponent: Preview = null }: AppProps = {}) {
+export default function App({ mode = 'minecraft', previewComponent: Preview = null, plugins = NO_PLUGINS }: AppProps = {}) {
   const { openContextMenu } = useContextMenu()
   const previewAvailable = mode === 'minecraft' && Preview !== null
   const projectExtension = mode === 'rawsprite' ? 'rsp' : 'mts'
@@ -251,19 +265,24 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const transformSnapshotRef = useRef<Snapshot | null>(null)
 
   const activeDocument = documents.find((document) => document.id === activeDocumentId) ?? documents[0]
-  const { layers, width, height, activeLayerId, selection, filename, dirty, skinUrl, skinFilename, zoom, history, future, projectPath } = activeDocument
+  const dirtyDocumentCount = documents.filter((document) => document.dirty).length
+  const { layers, width, height, activeLayerId, selection, filename, dirty, skinUrl, zoom, history, future, projectPath } = activeDocument
   // Large canvases cannot afford 80 full snapshots; keep undo useful without exhausting memory.
   const historyLimit = useMemo(() => Math.max(1, Math.min(80, Math.floor(4_000_000 / Math.max(1, width * height)))), [width, height])
 
-  const writeActiveDocument = useCallback((updater: (document: DocumentState) => DocumentState) => {
+  const writeDocumentById = useCallback((id: string, updater: (document: DocumentState) => DocumentState) => {
     const current = documentsRef.current
-    const index = current.findIndex((document) => document.id === activeDocRef.current)
+    const index = current.findIndex((document) => document.id === id)
     if (index < 0) return
     const next = [...current]
     next[index] = updater(current[index])
     documentsRef.current = next
     setDocuments(next)
   }, [])
+
+  const writeActiveDocument = useCallback((updater: (document: DocumentState) => DocumentState) => {
+    writeDocumentById(activeDocRef.current, updater)
+  }, [writeDocumentById])
 
   const setLayers = useCallback((value: Layer[] | ((previous: Layer[]) => Layer[])) => {
     writeActiveDocument((document) => {
@@ -321,9 +340,6 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     writeActiveDocument((document) => ({ ...document, zoom: resolveValue(value, document.zoom) }))
   }, [writeActiveDocument])
 
-  const setProjectPath = useCallback((value: string | null) => {
-    writeActiveDocument((document) => ({ ...document, projectPath: value }))
-  }, [writeActiveDocument])
   const [currentColor, setCurrentColor] = useState('#4ba3ff')
   const [tool, setTool] = useState<ToolId>('brush')
   const previousToolRef = useRef<ToolId>('brush')
@@ -361,6 +377,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const fileInputRef = useRef<HTMLInputElement>(null)
   const projectInputRef = useRef<HTMLInputElement>(null)
   const skinInputRef = useRef<HTMLInputElement>(null)
+  const pluginHostRef = useRef<PluginHost | null>(null)
+  const [, setPluginRevision] = useState(0)
 
   useEffect(() => {
     if (!previewAvailable && viewMode !== '2d') setViewMode('2d')
@@ -371,6 +389,36 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   useEffect(() => { widthRef.current = width; heightRef.current = height }, [width, height])
   useEffect(() => { documentsRef.current = documents }, [documents])
   useEffect(() => { activeDocRef.current = activeDocumentId }, [activeDocumentId])
+
+  useEffect(() => {
+    if (!plugins.length) return
+    let cancelled = false
+    const host = createPluginHost({
+      onError: (error, pluginId) => {
+        if (!cancelled) setStatus(`Ошибка плагина ${pluginId}: ${error.message}`)
+      },
+    })
+    pluginHostRef.current = host
+    const unsubscribe = host.subscribe(() => {
+      if (!cancelled) setPluginRevision((value) => value + 1)
+    })
+    void (async () => {
+      for (const plugin of plugins) {
+        const result = await host.activate(plugin)
+        if (cancelled) {
+          if (result.ok) await host.deactivate(plugin.manifest.id)
+          return
+        }
+        if (!result.ok) setStatus(`Плагин ${plugin.manifest.id}: ${result.error.message}`)
+      }
+    })()
+    return () => {
+      cancelled = true
+      unsubscribe.dispose()
+      pluginHostRef.current = null
+      void host.deactivateAll()
+    }
+  }, [plugins])
 
   // The canvas, the 3D preview and PNG export all show the flattened stack.
   const pixels = useMemo(() => compositeLayers(layers, width, height), [layers, width, height])
@@ -787,13 +835,13 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     const doc = current[index]
     let next = current.filter((document) => document.id !== id)
     if (!next.length) next = [mode === 'rawsprite'
-      ? createBlankDocument('Без названия 1.rsp', 64, 64)
-      : createBlankDocument('Без названия 1.mts', 64, 32)]
+      ? createBlankDocument(`Без названия 1.${projectExtension}`, 64, 64)
+      : createBlankDocument(`Без названия 1.${projectExtension}`, 64, 32)]
     documentsRef.current = next
     setDocuments(next)
     if (activeDocRef.current === id) activateDocument(next[Math.min(index, next.length - 1)].id)
     else setStatus(`Проект закрыт: ${doc.filename}`)
-  }, [activateDocument])
+  }, [activateDocument, mode, projectExtension])
 
   const closeDocument = useCallback((id: string) => {
     const doc = documentsRef.current.find((document) => document.id === id)
@@ -1007,24 +1055,25 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     })()
   }, [filename, pixels, width, height])
 
-  const buildProjectFile = useCallback((): ProjectFileV2 => ({
+  const buildProjectFile = useCallback((document: DocumentState): ProjectFileV2 => ({
     format: 'minecraft-texture-studio-project',
     version: 3,
-    filename,
-    width,
-    height,
-    activeLayerId: activeLayerIdRef.current,
-    layers: layersRef.current.map((layer) => ({
+    filename: document.filename,
+    width: document.width,
+    height: document.height,
+    activeLayerId: document.activeLayerId,
+    layers: document.layers.map((layer) => ({
       id: layer.id,
       name: layer.name,
       visible: layer.visible,
       opacity: layer.opacity,
       pixels: layer.pixels,
     })),
-    selection,
+    selection: document.selection,
     settings: {
       currentColor, tool, viewMode, showGrid, showUv,
-      show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename,
+      show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate,
+      zoom: document.zoom, skinUrl: document.skinUrl, skinFilename: document.skinFilename,
     },
     shortcuts,
     palettes: {
@@ -1032,46 +1081,55 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       savedColors: readLocalJson('mts-saved-colors-v1', []),
       activePalette: localStorage.getItem('mts-active-palette-v1') ?? 'Minecraft · Classic',
     },
-  }), [filename, width, height, selection, currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, zoom, skinUrl, skinFilename, shortcuts])
+    extensions: document.extensions,
+  }), [currentColor, tool, viewMode, showGrid, showUv, show3dGrid, showModelBounds, paintOn3d, crouchPinned, autoRotate, shortcuts])
 
-  const saveProjectInBrowser = useCallback(async (json: string, saveAs: boolean): Promise<boolean> => {
-    const activeId = activeDocRef.current
-    const handle = saveAs ? undefined : browserProjectHandlesRef.current.get(activeId)
-    const name = toProjectName(filename, projectExtension)
-    const result = await saveBlobInBrowser(
-      new Blob([json], { type: projectMime }),
-      name,
-      { handle, accept: { [projectMime]: [`.${projectExtension}`] } },
-    )
-    if (!result.saved) return false
-    if (result.handle) browserProjectHandlesRef.current.set(activeId, result.handle)
-    if (activeDocRef.current === activeId) {
-      setFilename(basename(result.handle?.name ?? name))
-      setDirty(false)
-    }
-    setStatus(`Проект сохранён (.${projectExtension}) · ${layersRef.current.length} сл.`)
-    return true
-  }, [filename, projectExtension, projectMime, setDirty, setFilename])
-
-  const saveProject = useCallback(async (saveAs = false): Promise<boolean> => {
-    const json = JSON.stringify(buildProjectFile(), null, 2)
+  /**
+   * Saves one specific document, including documents that are not currently
+   * active (used by "save all" on application close). Updates only that
+   * document's filename/path/dirty flag.
+   */
+  const saveDocument = useCallback(async (document: DocumentState, saveAs = false): Promise<boolean> => {
+    const json = JSON.stringify(buildProjectFile(document), null, 2)
     if (!isDesktopRuntime()) {
-      return saveProjectInBrowser(json, saveAs)
+      const handle = saveAs ? undefined : browserProjectHandlesRef.current.get(document.id)
+      const name = toProjectName(document.filename, projectExtension)
+      try {
+        const result = await saveBlobInBrowser(
+          new Blob([json], { type: projectMime }),
+          name,
+          { handle, accept: { [projectMime]: [`.${projectExtension}`] } },
+        )
+        if (!result.saved) return false
+        if (result.handle) browserProjectHandlesRef.current.set(document.id, result.handle)
+        writeDocumentById(document.id, (current) => ({
+          ...current,
+          filename: basename(result.handle?.name ?? name),
+          dirty: false,
+        }))
+        setStatus(`Проект сохранён (.${projectExtension}) · ${document.layers.length} сл.`)
+        return true
+      } catch (error) {
+        console.error(error)
+        setStatus(`Не удалось сохранить проект: ${error instanceof Error ? error.message : 'ошибка'}`)
+        return false
+      }
     }
-    const activeId = activeDocRef.current
-    const proposed = projectPath ?? toProjectName(filename, projectExtension)
+
+    const proposed = document.projectPath ?? toProjectName(document.filename, projectExtension)
     try {
-      const selected = !saveAs && projectPath
-        ? projectPath
+      const selected = !saveAs && document.projectPath
+        ? document.projectPath
         : await pickSavePath(proposed, [{ name: projectLabel, extensions: [projectExtension] }], 'Сохранить проект')
       if (!selected) return false
       const finalPath = ensureExtension(selected, projectExtension)
       await writeTextFile(finalPath, json)
-      if (activeDocRef.current === activeId) {
-        setProjectPath(finalPath)
-        setFilename(basename(finalPath))
-        setDirty(false)
-      }
+      writeDocumentById(document.id, (current) => ({
+        ...current,
+        projectPath: finalPath,
+        filename: basename(finalPath),
+        dirty: false,
+      }))
       setStatus(`Проект сохранён: ${basename(finalPath)}`)
       return true
     } catch (error) {
@@ -1079,9 +1137,27 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       setStatus(`Не удалось сохранить проект: ${error instanceof Error ? error.message : 'ошибка'}`)
       return false
     }
-  }, [buildProjectFile, filename, projectExtension, projectLabel, projectPath, setDirty, setFilename, setProjectPath, saveProjectInBrowser])
+  }, [buildProjectFile, projectExtension, projectLabel, projectMime, writeDocumentById])
+
+  const saveProject = useCallback(async (saveAs = false): Promise<boolean> => {
+    const document = documentsRef.current.find((item) => item.id === activeDocRef.current)
+    if (!document) return false
+    return saveDocument(document, saveAs)
+  }, [saveDocument])
 
   const saveProjectAs = useCallback(() => saveProject(true), [saveProject])
+
+  /** Saves every dirty tab in order. Stops on the first cancel/error. */
+  const saveAllDirtyDocuments = useCallback(async (): Promise<boolean> => {
+    const dirtyIds = documentsRef.current.filter((document) => document.dirty).map((document) => document.id)
+    for (const id of dirtyIds) {
+      const document = documentsRef.current.find((item) => item.id === id)
+      if (!document || !document.dirty) continue
+      const saved = await saveDocument(document, false)
+      if (!saved) return false
+    }
+    return true
+  }, [saveDocument])
 
   const handlePickColor = useCallback((pickedColor: string) => {
     if (pickedColor !== transparentPixel) {
@@ -1093,7 +1169,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setTool((activeTool) => activeTool === 'eyedropper' ? previousToolRef.current : activeTool)
   }, [selectPaletteColor])
 
-  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; selection?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown }, fileName: string, projectPath: string | null = null, projectWidth = 64, projectHeight = 32) => {
+  const applyProject = (nextLayers: Layer[], requestedActiveId: string, project: { filename?: unknown; selection?: unknown; settings?: unknown; shortcuts?: unknown; palettes?: unknown; extensions?: unknown }, fileName: string, projectPath: string | null = null, projectWidth = 64, projectHeight = 32) => {
     if (floating) cancelSelectionTransform()
     const settings = project.settings as Partial<ProjectSettings>
     const activeId = nextLayers.some((layer) => layer.id === requestedActiveId) ? requestedActiveId : nextLayers[nextLayers.length - 1].id
@@ -1101,7 +1177,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       ? basename(projectPath)
       : typeof project.filename === 'string'
         ? project.filename
-        : fileName.replace(/\.(mts|json)$/i, '.png')
+        : fileName.replace(/\.(mts|rsp|json)$/i, '.png')
     const doc = createDocument(loadedFilename, nextLayers, {
       width: projectWidth,
       height: projectHeight,
@@ -1110,9 +1186,10 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       skinUrl: typeof settings.skinUrl === 'string' ? settings.skinUrl : null,
       skinFilename: typeof settings.skinFilename === 'string' ? settings.skinFilename : '',
       zoom: typeof settings.zoom === 'number' && Number.isFinite(settings.zoom)
-        ? Math.min(2048, Math.max(2, Math.round(settings.zoom)))
+        ? Math.min(2048, Math.max(0.05, settings.zoom))
         : 10,
       projectPath,
+      extensions: readExtensions(project.extensions),
     })
     const currentDocs = documentsRef.current
     // A single untouched "new document" tab is replaced instead of leaving an empty tab behind.
@@ -1352,7 +1429,8 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         const next = layersRef.current.map((layer) => layer.id === activeLayerIdRef.current ? { ...layer, pixels: placed } : layer)
         applyLayers(next, `Импортировано в активный слой: ${file.name} (${sizeNote})`)
       }
-      setFilename(toPngFilename(file.name))
+      // Importing into an existing project must not rename it or hide its save path.
+      if (!projectPath) setFilename(toPngName(file.name))
     } catch (error) {
       console.error(error)
       setStatus('Не удалось открыть изображение')
@@ -1370,7 +1448,6 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     setActiveLayerId(layer.id)
     setSelection(null)
     setClipboard(null)
-    setFilename(mode === 'rawsprite' ? 'Без названия.rsp' : 'untitled-elytra.png')
     setDirty(true)
     setStatus('Новая пустая текстура')
   }
@@ -1384,6 +1461,27 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   const activeGridTitle = viewMode === '3d' ? 'Сетка на 3D-модели' : 'Сетка пикселей 2D'
   const activeToolLabel = tools.find((item) => item.id === tool)?.label ?? 'Карандаш'
 
+  const pluginMenuItems = (area: MenuArea): ContextMenuItem[] => {
+    const host = pluginHostRef.current
+    if (!host) return []
+    const items: ContextMenuItem[] = []
+    for (const contribution of host.getMenus(area)) {
+      if (contribution.separatorBefore && items.length > 0) items.push({ separator: true })
+      const commandId = contribution.commandId
+      items.push({
+        label: contribution.label,
+        shortcut: contribution.shortcut,
+        disabled: !commandId,
+        action: commandId ? () => { void host.runCommand(commandId) } : undefined,
+      })
+    }
+    return items
+  }
+
+  const pluginSection = (area: MenuArea): ContextMenuItem[] => {
+    const items = pluginMenuItems(area)
+    return items.length ? [{ separator: true }, ...items] : []
+  }
   const selectionActions: ContextMenuItem[] = [
     { label: 'Копировать', shortcut: shortcuts.copy, icon: <XpIcon name="copy" size={14} />, action: copySelection },
     { label: 'Копировать объединённое', shortcut: shortcuts.copyMerged, icon: <Layers3 size={14} />, action: copyMerged },
@@ -1410,6 +1508,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     { label: 'Экспортировать PNG…', shortcut: shortcuts.export, icon: <XpIcon name="bitmap" size={14} />, action: exportPng },
     { separator: true },
     { label: 'Очистить текущую текстуру', icon: <XpIcon name="application" size={14} />, action: resetTexture },
+    ...pluginSection('file'),
   ]
   const editMenu: ContextMenuItem[] = [
     { label: 'Отменить', shortcut: shortcuts.undo, icon: <XpIcon name="undo" size={14} />, disabled: history.length === 0, action: undo },
@@ -1417,6 +1516,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     { separator: true },
     ...selectionActions,
     { separator: true },
+    ...pluginSection('edit'),
   ]
   const viewMenu: ContextMenuItem[] = previewAvailable ? [
     { label: 'Только 2D', checked: viewMode === '2d', action: () => setViewMode('2d') },
@@ -1427,10 +1527,12 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     { label: 'UV-направляющие', checked: showUv, action: () => setShowUv((value) => !value) },
     { label: 'Сетка на модели', checked: show3dGrid, action: () => setShow3dGrid((value) => !value) },
     { label: 'Границы геометрии', checked: showModelBounds, action: () => setShowModelBounds((value) => !value) },
+    ...pluginSection('view'),
   ] : [
     { label: '2D', checked: true },
     { separator: true },
     { label: 'Сетка пикселей', checked: showGrid, action: () => setShowGrid((value) => !value) },
+    ...pluginSection('view'),
   ]
   const layerMenu: ContextMenuItem[] = [
     { label: 'Новый слой', icon: <XpIcon name="newfolder" size={14} />, action: addLayer },
@@ -1442,6 +1544,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
     { separator: true },
     { label: activeLayer?.visible ? 'Скрыть слой' : 'Показать слой', checked: activeLayer?.visible, action: () => toggleLayerVisibility(activeLayerId) },
     { label: 'Удалить слой', danger: true, icon: <XpIcon name="delete" size={14} />, disabled: layers.length < 2, action: () => deleteLayer(activeLayerId) },
+    ...pluginSection('layer'),
   ]
   const toolsMenu: ContextMenuItem[] = [
     ...tools.map((item) => ({ label: item.label, shortcut: shortcuts[item.shortcut], checked: tool === item.id, action: () => chooseTool(item.id) })),
@@ -1451,10 +1554,12 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       { label: 'Присяд + раскрытие элитр', shortcut: 'Shift', checked: crouching, action: () => setCrouchPinned((value) => !value) },
       { label: 'Автовращение модели', checked: autoRotate, action: () => setAutoRotate((value) => !value) },
     ] : []),
+    ...pluginSection('tools'),
   ]
   const settingsMenu: ContextMenuItem[] = [
     { label: 'Настроить горячие клавиши…', icon: <Keyboard size={14} />, action: () => setShowShortcuts(true) },
     ...(previewAvailable ? [{ label: 'Сбросить скин модели', icon: <RotateCw size={14} />, disabled: !skinUrl, action: () => { setSkinUrl(null); setSkinFilename(''); setDirty(true); setStatus('Возвращён стандартный скин модели') } }] : []),
+    ...pluginSection('settings'),
   ]
   const appContextMenu = (event: ReactMouseEvent<HTMLElement>) => {
     // Keep the native text-editing menu for fields so right-click paste/copy still works.
@@ -1476,7 +1581,7 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
   }
 
   return (
-    <div className="app-shell" onContextMenu={appContextMenu} onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }} onAuxClick={(event) => { if (event.button === 1) event.preventDefault() }}>
+    <div className="app-shell" data-plugins={pluginHostRef.current?.activePlugins.length ?? 0} onContextMenu={appContextMenu} onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }} onAuxClick={(event) => { if (event.button === 1) event.preventDefault() }}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark"><XpIcon name="paint" size={26} /></div>
@@ -1541,11 +1646,16 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
           { separator: true },
           { label: 'Показать UV-шаблон', checked: showUv, action: () => setShowUv((value) => !value) },
           { label: 'Показать пиксельную сетку', checked: showGrid, action: () => setShowGrid((value) => !value) },
+          ...pluginSection('image'),
         ])}>Изображение</button>
         <button onClick={(event) => openContextMenu(event, layerMenu)}>Слой</button>
         <button onClick={(event) => openContextMenu(event, toolsMenu)}>Инструменты</button>
         <button onClick={(event) => openContextMenu(event, settingsMenu)}>Настройки</button>
-        <button onClick={(event) => openContextMenu(event, [{ label: 'Быстрый старт', action: () => setHelpOpen(true) }, { label: 'О версии и проекте', disabled: true }])}>Справка</button>
+        <button onClick={(event) => openContextMenu(event, [
+          { label: 'Быстрый старт', action: () => setHelpOpen(true) },
+          { label: 'О версии и проекте', disabled: true },
+          ...pluginSection('help'),
+        ])}>Справка</button>
       </nav>
 
       {helpOpen && <div className="help-popover"><strong>Быстрый старт</strong><p>Выбери инструмент и цвет, затем рисуй на развёртке или прямо по модели. Выделение ограничивает кисть, заливку и примитивы; внутри выделения можно двигать пиксели, тянуть за маркеры и поворачивать кнопками в шапке холста. Точная настройка цвета — кнопка с ползунками рядом с HEX. Слои — в левой панели под палитрой.</p></div>}
@@ -1712,7 +1822,9 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
         onConfirm={() => {
           const closeId = pendingClose?.id
           if (!closeId) return
-          void saveProject().then((saved) => {
+          const document = documentsRef.current.find((item) => item.id === closeId)
+          if (!document) { setPendingClose(null); return }
+          void saveDocument(document).then((saved) => {
             if (!saved) return
             performCloseDocument(closeId)
             setPendingClose(null)
@@ -1727,13 +1839,15 @@ export default function App({ mode = 'minecraft', previewComponent: Preview = nu
       <ConfirmDialog
         open={appCloseOpen}
         title="Закрытие приложения"
-        message="Есть несохранённые изменения. Сохранить их перед выходом?"
+        message={dirtyDocumentCount > 1
+          ? `Несохранённые изменения в ${dirtyDocumentCount} проектах. Сохранить все перед выходом?`
+          : 'Есть несохранённые изменения. Сохранить их перед выходом?'}
         confirmLabel="Сохранить"
         secondaryLabel="Не сохранять"
         secondaryDanger
         cancelLabel="Отмена"
         onConfirm={() => {
-          void saveProject().then((saved) => { if (saved) void forceCloseApp() })
+          void saveAllDirtyDocuments().then((saved) => { if (saved) void forceCloseApp() })
         }}
         onSecondary={() => { setAppCloseOpen(false); void forceCloseApp() }}
         onCancel={() => setAppCloseOpen(false)}
